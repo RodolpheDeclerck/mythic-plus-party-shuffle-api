@@ -3,7 +3,6 @@
     "target": "ES6",                          
     "module": "ESNext",   
     "moduleResolution": "node",   // Ajoutez cette ligne
-    "baseUrl": "src",                  
     "rootDir": "./src",           
     "outDir": "./dist",                       
     "strict": true,                           
