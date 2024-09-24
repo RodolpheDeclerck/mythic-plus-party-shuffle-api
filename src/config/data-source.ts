@@ -2,26 +2,28 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { Character } from '../models/character.entity'; 
 import { Party } from '../models/party.entity';
-
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 export const AppDataSource = new DataSource({
-  type: 'mysql',
-  host: 'localhost',
-  port: 3306,
-  username: 'root',           // or your MySQL username
-  password: 'password',  // replace with your MySQL password
-  database: 'mythic_plus_party_shuffle',  // the database name you created earlier
-  synchronize: true,          // synchronize the database schema with the entity definitions
+  type: 'postgres',
+  host: 'aws-0-us-east-2.pooler.supabase.com',
+  port: 6543,
+  username: 'postgres.ctjzlyiarxhrrlzujkiy',
+  password: process.env.SUPABASE_PASSWORD,
+  database: 'postgres',
+  synchronize: false, // Désactiver la synchronisation automatique
   logging: true,
-  entities: [Character, Party],      // specify your entities here
+  entities: [Character, Party],
   migrations: [],
   subscribers: [],
 });
 
+
 // Initialize the connection
 AppDataSource.initialize()
   .then(() => {
-    console.log('Data Source has been initialized!');
+    console.log('Data Source has been initialized with Supabase!');
   })
   .catch((err) => {
     console.error('Error during Data Source initialization:', err);

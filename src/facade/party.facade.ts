@@ -28,7 +28,7 @@ class PartyFacade {
 
     // Méthode pour récupérer les groupes depuis Redis
     async getGroupsFromRedis(): Promise<Party[]> {
-        const redisKey = 'party:current';
+        const redisKey = 'party:1';
         const partiesJson = await redisClient.get(redisKey);
 
         if (partiesJson) {
@@ -40,8 +40,7 @@ class PartyFacade {
 
     // Méthode privée pour sauvegarder les groupes dans Redis
     private async saveGroupsToRedis(parties: Party[]): Promise<void> {
-        const redisKey = 'party:current';
-        await redisClient.set(redisKey, JSON.stringify(parties));
+        await redisClient.set('party:1', JSON.stringify(parties));
     }
 }
 
