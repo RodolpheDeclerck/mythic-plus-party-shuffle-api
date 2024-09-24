@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { partyFacade } from '../facade/party.facade';
+import { partyFacade } from '../facade/party.facade.js';
 
 class PartyController {
     async shuffleParties(req: Request, res: Response): Promise<Response> {

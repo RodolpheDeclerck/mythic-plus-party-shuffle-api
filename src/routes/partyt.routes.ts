@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { partyController } from '../controllers/party.controller';
+import { partyController } from '../controllers/party.controller.js';
 
 const router = Router();
 

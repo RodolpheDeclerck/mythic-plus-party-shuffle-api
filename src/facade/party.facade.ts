@@ -1,7 +1,7 @@
-import { CharacterService } from '../services/character.service';
-import { PartyService } from '../services/parti.service';
-import { Party } from '../models/party.entity';
-import redisClient  from '../config/redis-client';
+import { CharacterService } from '../services/character.service.js';
+import { PartyService } from '../services/parti.service.js';
+import { Party } from '../models/party.entity.js';
+import redisClient  from '../config/redis-client.js';
 
 class PartyFacade {
     private characterService: CharacterService;

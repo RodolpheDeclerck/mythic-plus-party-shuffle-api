@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { SpecializationDetails } from '../data/specializationsDetails.data';
-import { CharacterClass } from '../enums/characterClass.enum';
-import { Specialization } from '../enums/specialization.enum';
-import { CharacterClassDetails } from '../data/characterClassDetails.data';
+import { SpecializationDetails } from '../data/specializationsDetails.data.js';
+import { CharacterClass } from '../enums/characterClass.enum.js';
+import { Specialization } from '../enums/specialization.enum.js';
+import { CharacterClassDetails } from '../data/characterClassDetails.data.js';
 
 class MetadataController {
   // Obtenir la liste des classes

@@ -1,5 +1,5 @@
-import { CharacterClass } from '../enums/characterClass.enum';
-import { Specialization } from '../enums/specialization.enum';
+import { CharacterClass } from '../enums/characterClass.enum.js';
+import { Specialization } from '../enums/specialization.enum.js';
 
 export const CharacterClassDetails: { [key in CharacterClass]: { specializations: Specialization[] } } = {
   

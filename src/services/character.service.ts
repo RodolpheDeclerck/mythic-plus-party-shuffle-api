@@ -1,7 +1,7 @@
-import { AppDataSource } from '../config/data-source';
-import { Character } from '../models/character.entity';
-import { SpecializationDetails } from '../data/specializationsDetails.data';
-import { CharacterDto } from '../dto/character.dto';
+import { AppDataSource } from '../config/data-source.js';
+import { Character } from '../models/character.entity.js';
+import { SpecializationDetails } from '../data/specializationsDetails.data.js';
+import { CharacterDto } from '../dto/character.dto.js';
 
 export class CharacterService {
     async createCharacter(data: CharacterDto): Promise<Character> {

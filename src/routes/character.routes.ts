@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { characterController } from '../controllers/character.controller';
-import { io } from '../app';  // Importer l'instance de io pour émettre les événements
+import { characterController } from '../controllers/character.controller.js';
+import { io } from '../app.js';  // Importer l'instance de io pour émettre les événements
 
 const router = Router();
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { CharacterService } from '../services/character.service';
-import { CharacterDto } from '../dto/character.dto';
-import { Specialization } from '../enums/specialization.enum';
+import { CharacterService } from '../services/character.service.js';
+import { CharacterDto } from '../dto/character.dto.js';
+import { Specialization } from '../enums/specialization.enum.js';
 
 class CharacterController {
   private characterService: CharacterService;

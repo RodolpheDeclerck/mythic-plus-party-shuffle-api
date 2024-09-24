@@ -1,8 +1,9 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
-import { Character } from '../models/character.entity'; 
-import { Party } from '../models/party.entity';
+import { Character } from '../models/character.entity.js'; 
+import { Party } from '../models/party.entity.js';
 import * as dotenv from 'dotenv';
+
 dotenv.config();
 
 export const AppDataSource = new DataSource({

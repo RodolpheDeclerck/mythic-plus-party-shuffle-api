@@ -1,6 +1,6 @@
 // index.ts
-import { AppDataSource } from './config/data-source';  // Import your database config
-import httpServer from './app';  // Assurez-vous que httpServer est exporté de app.ts
+import { AppDataSource } from './config/data-source.js';  // Import relatif
+import httpServer from './app.js';  // Assurez-vous que httpServer est exporté de app.ts
 
 const PORT = parseInt(process.env.PORT || '8080', 10);  // Convertir en nombre
 
@@ -14,6 +14,6 @@ AppDataSource.initialize()
       console.log(`Server is running at http://localhost:${PORT}`);
     });
   })
-  .catch((err) => {
+  .catch((err: any) => {
     console.error('Error during Data Source initialization:', err);
   });

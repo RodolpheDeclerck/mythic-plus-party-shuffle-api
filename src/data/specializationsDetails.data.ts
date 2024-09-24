@@ -1,5 +1,5 @@
-import { Role } from '../enums/role.enum';
-import { Specialization } from '../enums/specialization.enum';
+import { Role } from '../enums/role.enum.js';
+import { Specialization } from '../enums/specialization.enum.js';
 
 // Mapping des spécialisations avec leurs rôles, Bloodlust et Battle Rez
 export const SpecializationDetails: { [key in Specialization]: { role: Role; bloodLust: boolean; battleRez: boolean } } = {

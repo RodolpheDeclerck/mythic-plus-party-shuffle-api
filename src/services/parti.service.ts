@@ -1,7 +1,7 @@
 import { Character } from '../models/character.entity';
-import { SpecializationDetails } from '../data/specializationsDetails.data';
-import { Party } from '../models/party.entity';
-import { CharacterService } from './character.service';
+import { SpecializationDetails } from '../data/specializationsDetails.data.js';
+import { Party } from '../models/party.entity.js';
+import { CharacterService } from './character.service.js';
 
 export class PartyService {
 

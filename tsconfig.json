@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES6",                          
-    "module": "commonjs",   
+    "module": "ESNext",   
+    "moduleResolution": "node",   // Ajoutez cette ligne
     "baseUrl": "src",                  
-    "rootDir": "./src",                       
+    "rootDir": "./src",           
     "outDir": "./dist",                       
     "strict": true,                           
     "esModuleInterop": true,                  
@@ -14,6 +15,6 @@
     "experimentalDecorators": true,            // Active les décorateurs expérimentaux
     "emitDecoratorMetadata": true       
   },
-  "include": ["src"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
 }

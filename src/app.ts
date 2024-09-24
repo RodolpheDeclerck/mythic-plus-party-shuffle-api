@@ -3,9 +3,9 @@ import cors from 'cors';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import characterRoutes from './routes/character.routes';  // Import your character routes
-import metadataRoutes from './routes/metadata.routes';
-import partyRoutes from './routes/partyt.routes';
+import characterRoutes from './routes/character.routes.js';  // Import your character routes
+import metadataRoutes from './routes/metadata.routes.js';
+import partyRoutes from './routes/partyt.routes.js';
 
 // Initialiser Express
 const app = express();

@@ -1,9 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { CharacterClass } from '../enums/characterClass.enum';
-import { Role } from '../enums/role.enum';
-import { Specialization } from '../enums/specialization.enum';
-import { SpecializationDetails } from '../data/specializationsDetails.data';
-import { Party } from './party.entity';
+import { CharacterClass } from '../enums/characterClass.enum.js';
+import { Role } from '../enums/role.enum.js';
+import { Specialization } from '../enums/specialization.enum.js';
+import { SpecializationDetails } from '../data/specializationsDetails.data.js';
 
 @Entity()
 export class Character {

@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, IsEnum } from 'class-validator';
-import { CharacterClass } from '../enums/characterClass.enum';
-import { Specialization } from '../enums/specialization.enum';
+import { CharacterClass } from '../enums/characterClass.enum.js';
+import { Specialization } from '../enums/specialization.enum.js';
 
 /**
  * DTO pour la création d'un personnage
