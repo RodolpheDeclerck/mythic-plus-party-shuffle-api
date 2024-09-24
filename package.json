@@ -4,7 +4,7 @@
   "main": "./src/index.ts",
   "scripts": {
     "start": "ts-node src/index.ts",
-    "build": "tsc build --output public",
+    "build": "tsc --outDir public",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js"
   },
