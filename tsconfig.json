@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es5",                          
-    "module": "commonjs",   
+    "target": "ES6",                          
+    "module": "ESNext",   
     "baseUrl": "src",                  
     "rootDir": "./src",                       
-    "outDir": "./public",                       
+    "outDir": "./dist",                       
     "strict": true,                           
     "esModuleInterop": true,                  
     "skipLibCheck": true,
