@@ -9,7 +9,7 @@ router.post('/characters', async (req, res) => {
   try {
     await characterController.createCharacter(req, res);
     io.emit('character-updated');  // Émettre un événement après la création
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ message: 'Failed to create character', error });
   }
 });
@@ -25,7 +25,7 @@ router.put('/characters/:id', async (req, res) => {
   try {
     await characterController.updateCharacter(req, res);
     io.emit('character-updated');  // Émettre un événement après la mise à jour
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ message: 'Failed to update character', error });
   }
 });
@@ -35,7 +35,7 @@ router.delete('/characters/:id', async (req, res) => {
   try {
     await characterController.deleteCharacter(req, res);
     io.emit('character-updated');  // Émettre un événement après la suppression
-  } catch (error) {
+  } catch (error : any) {
     res.status(500).json({ message: 'Failed to delete character', error });
   }
 });

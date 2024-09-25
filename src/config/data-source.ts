@@ -26,6 +26,6 @@ AppDataSource.initialize()
   .then(() => {
     console.log('Data Source has been initialized with Supabase!');
   })
-  .catch((err) => {
+  .catch((err: any) => {
     console.error('Error during Data Source initialization:', err);
   });

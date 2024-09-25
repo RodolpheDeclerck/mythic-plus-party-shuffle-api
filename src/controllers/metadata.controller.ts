@@ -10,7 +10,7 @@ class MetadataController {
     try {
       const classes = Object.keys(CharacterClassDetails);
       res.json(classes);
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ message: 'Error fetching classes', error });
     }
   }
@@ -26,7 +26,7 @@ class MetadataController {
       } else {
         res.status(404).json({ message: 'Class not found' });
       }
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ message: 'Error fetching specializations', error });
     }
   }
@@ -42,7 +42,7 @@ class MetadataController {
       } else {
         res.status(404).json({ message: 'Specialization not found' });
       }
-    } catch (error) {
+    } catch (error: any) {
       res.status(500).json({ message: 'Error fetching specialization details', error });
     }
   }
