@@ -19,11 +19,14 @@ router.get('/parties/shuffle', async (req, res) => {
 // Route pour récupérer les parties
 router.get('/parties', async (req, res) => {
     try {
+        console.log('Calling fetchParties...');
         const parties = await partyController.fetchParties();
+        console.log('Sending parties response...');
         res.json(parties); // Send response here
     } catch (error) {
         console.error('Error fetching parties:', error);
         if (!res.headersSent) { // Check if headers have already been sent
+            console.log('Sending error response...');
             res.status(500).json({ message: 'Failed to retrieve parties' });
         }
     }

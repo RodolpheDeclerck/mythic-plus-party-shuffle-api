@@ -18,12 +18,13 @@ class PartyController {
 
     async fetchParties(): Promise<Party[]> {
         try {
-            // Appelle la méthode du service pour récupérer les parties
+            console.log('Fetching parties from Redis...');
             const parties = await partyFacade.getPartiesFromRedis();
-            return parties;
+            console.log('Fetched parties:', parties);
+            return parties; // Return the parties
         } catch (error) {
-            console.error('Erreur lors de la récupération des parties:', error);
-            throw new Error('Échec de la récupération des parties');
+            console.error('Error in fetchParties:', error);
+            throw error; // Rethrow the error
         }
     }
 }

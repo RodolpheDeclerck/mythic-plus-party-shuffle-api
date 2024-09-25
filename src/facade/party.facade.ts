@@ -32,15 +32,16 @@ class PartyFacade {
         try {
             const partiesJson = await redisClient.get(redisKey);
             console.log('Data from Redis:', partiesJson);
-
+    
             if (partiesJson) {
                 return JSON.parse(partiesJson) as Party[];
             } else {
-                return [];
+                console.log('No parties found in Redis, returning an empty array.');
+                return []; // Return an empty array if no data is found
             }
         } catch (error) {
             console.error('Error retrieving parties from Redis:', error);
-            throw new Error('Failed to retrieve parties');
+            throw error; // Make sure to rethrow the error to be caught in the controller
         }
     }
 
