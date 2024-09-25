@@ -21,7 +21,7 @@ class PartyFacade {
         const parties = await this.partyService.shuffleGroups(characters);
 
         // Sauvegarder les groupes dans Redis
-        await this.saveGroupsToRedis(parties);
+        await this.savePartiesToRedis(parties);
 
         return parties;
     }
@@ -31,23 +31,28 @@ class PartyFacade {
         const redisKey = 'party:1';
         try {
             const partiesJson = await redisClient.get(redisKey);
+            console.log('Data from Redis:', partiesJson);
 
             if (partiesJson) {
-                // Retourner le tableau des parties
                 return JSON.parse(partiesJson) as Party[];
             } else {
-                // Retourner un tableau vide si aucune donnée n'est trouvée
                 return [];
             }
         } catch (error) {
-            console.error('Erreur lors de la récupération des parties depuis Redis:', error);
-            throw new Error('Échec de la récupération des parties');
+            console.error('Error retrieving parties from Redis:', error);
+            throw new Error('Failed to retrieve parties');
         }
     }
 
     // Méthode privée pour sauvegarder les groupes dans Redis
-    private async saveGroupsToRedis(parties: Party[]): Promise<void> {
-        await redisClient.set('party:1', JSON.stringify(parties));
+    async savePartiesToRedis(parties: Party[]): Promise<void> {
+        const redisKey = 'party:1';
+        try {
+            await redisClient.set(redisKey, JSON.stringify(parties));
+        } catch (error) {
+            console.error('Error saving parties to Redis:', error);
+            throw new Error('Failed to save parties');
+        }
     }
 }
 
