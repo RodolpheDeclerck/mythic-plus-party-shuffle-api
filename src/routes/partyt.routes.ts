@@ -20,7 +20,6 @@ router.get('/parties/shuffle', async (req, res) => {
 router.get('/parties', async (req, res) => {
     try {
         const shuffledParties = await partyController.getParties(req, res); // Retourne les groupes mélangés
-        io.emit('parties-shuffled');
         res.status(200).json(shuffledParties); // Renvoie les groupes mélangés
     } catch (error: any) {
         res.status(500).json({ message: 'Failed to shuffle parties', error });
