@@ -5,10 +5,7 @@ import { io } from '../app.js';  // Importer l'instance de io pour émettre les 
 const router = Router();
 
 // Route pour mélanger et créer de nouveaux groupes
-router.get('/parties/shuffle', partyController.shuffleParties);
-
-// PUT request to update a character by ID
-router.put('/parties/shuffle', async (req, res) => {
+router.get('/parties/shuffle', async (req, res) => {
     try {
       await partyController.shuffleParties;
       io.emit('parties-shuffled');  // Émettre un événement après la mise à jour
