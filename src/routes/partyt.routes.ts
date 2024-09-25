@@ -5,7 +5,7 @@ import { io } from '../app.js';  // Importer l'instance de io pour émettre les 
 const router = Router();
 
 // Route pour mélanger et créer de nouveaux groupes
-router.put('/parties/shuffle', async (req, res) => {
+router.get('/parties/shuffle', async (req, res) => {
     try {
         const shuffledParties = await partyController.shuffleParties; // Retourne les groupes mélangés
         io.emit('parties-shuffled');
