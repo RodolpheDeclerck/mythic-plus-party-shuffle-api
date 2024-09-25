@@ -13,7 +13,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(cors({
   origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'DELETE'],
 }));
 
 app.use('/api', characterRoutes);
@@ -25,7 +25,7 @@ const httpServer = createServer(app);
 export const io = new Server(httpServer, {
   cors: {
     origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'DELETE'],
   },
 });
 
