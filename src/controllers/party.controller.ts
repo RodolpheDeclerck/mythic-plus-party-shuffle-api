@@ -16,15 +16,14 @@ class PartyController {
         }
     }
 
+    // In partyController.ts
     async fetchParties(): Promise<Party[]> {
         try {
-            console.log('Fetching parties from Redis...');
             const parties = await partyFacade.getPartiesFromRedis();
-            console.log('Fetched parties:', parties);
-            return parties; // Return the parties
+            return parties; // Do not call res.json or res.send here
         } catch (error) {
             console.error('Error in fetchParties:', error);
-            throw error; // Rethrow the error
+            throw error; // Propagate the error back to the route handler
         }
     }
 }
