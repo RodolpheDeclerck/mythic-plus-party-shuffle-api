@@ -33,21 +33,6 @@ export const io = new Server(httpServer, {
 io.on('connection', (socket) => {
   console.log('New client connected');
 
-  // Écoute de l'événement WebSocket depuis le front-end
-  socket.on('fetchParties', async () => {
-    try {
-      // Appelle la méthode du contrôleur pour récupérer les parties
-      const parties = await partyController.fetchParties();
-      // Envoie les parties récupérées au client via le WebSocket
-      socket.emit('partiesData', parties);
-    } catch (error) {
-      console.error('Erreur lors de l\'envoi des parties via WebSocket:', error);
-      // Envoyer une réponse d'erreur au client si nécessaire
-      socket.emit('error', 'Échec de la récupération des parties');
-    }
-  });
-
-
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
