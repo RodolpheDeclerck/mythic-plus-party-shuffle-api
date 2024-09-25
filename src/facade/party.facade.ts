@@ -1,7 +1,7 @@
 import { CharacterService } from '../services/character.service.js';
 import { PartyService } from '../services/parti.service.js';
 import { Party } from '../models/party.entity.js';
-import redisClient  from '../config/redis-client.js';
+import redisClient from '../config/redis-client.js';
 
 class PartyFacade {
     private characterService: CharacterService;
@@ -29,12 +29,18 @@ class PartyFacade {
     // Méthode pour récupérer les groupes depuis Redis
     async getGroupsFromRedis(): Promise<Party[]> {
         const redisKey = 'party:1';
-        const partiesJson = await redisClient.get(redisKey);
+        try {
+            const partiesJson = await redisClient.get(redisKey);
 
-        if (partiesJson) {
-            return JSON.parse(partiesJson);
-        } else {
-            throw new Error('No parties found in Redis');
+            if (partiesJson) {
+                return JSON.parse(partiesJson);
+            } else {
+                // Return an empty array instead of throwing an error
+                return [];
+            }
+        } catch (error) {
+            console.error('Error retrieving parties from Redis:', error);
+            throw new Error('Failed to retrieve parties');
         }
     }
 
