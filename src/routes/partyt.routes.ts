@@ -18,13 +18,18 @@ router.get('/parties/shuffle', async (req, res) => {
 
 // Route pour récupérer les groupes actuels à partir de Redis
 router.get('/api/parties', async (req, res) => {
+    console.log('Entering /api/parties route'); // Log entry point
     try {
         const parties = await partyController.getParties();
-        res.json(parties); // Respond once with the result
+        console.log('Sending response with parties'); // Log before sending response
+        res.json(parties);
     } catch (error) {
         console.error('Error fetching parties:', error);
-        res.status(500).json({ message: 'Failed to retrieve parties' }); // Handle error response
+        if (!res.headersSent) { // Ensure response hasn't already been sent
+            res.status(500).json({ message: 'Failed to retrieve parties' });
+        }
     }
+    console.log('Exiting /api/parties route'); // Log exit point
 });
 
 export default router;
