@@ -9,8 +9,16 @@ import partyRoutes from './routes/partyt.routes.js';
 
 // Initialiser Express
 const app = express();
-app.use(cors());
 app.use(express.json());
+
+// Détection dynamique de l'environnement (local ou production)
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Configurer CORS pour autoriser les requêtes du frontend (local ou production)
+app.use(cors({
+  origin: isProduction ? 'https://your-frontend-domain.com' : 'http://localhost:3000',  // Changez l'URL de production par votre domaine de frontend hébergé
+  methods: ['GET', 'POST'],
+}));
 
 // Routes
 app.use('/api', characterRoutes);
@@ -20,10 +28,10 @@ app.use('/api', metadataRoutes);
 // Créer un serveur HTTP
 const httpServer = createServer(app);
 
-// Configurer Socket.IO
+// Configurer Socket.IO avec CORS
 export const io = new Server(httpServer, {
   cors: {
-    origin: 'http://localhost:3000',  // Autorise uniquement les requêtes venant du frontend
+    origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',  // Autoriser le front-end en production et en local
     methods: ['GET', 'POST'],
   },
 });
@@ -36,6 +44,12 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected');
   });
+});
+
+// Démarrer le serveur sur le port défini par Render ou localement sur le port 3001
+const PORT = process.env.PORT || 3001;
+httpServer.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
 
 export default httpServer;  // Exporter httpServer
