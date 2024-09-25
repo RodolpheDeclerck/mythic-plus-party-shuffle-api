@@ -16,14 +16,16 @@ class PartyController {
         }
     }
 
-    // In partyController.ts
-    async fetchParties(): Promise<Party[]> {
+    async getParties(req: Request, res: Response): Promise<Response> {
         try {
-            const parties = await partyFacade.getPartiesFromRedis();
-            return parties; // Do not call res.json or res.send here
-        } catch (error) {
-            console.error('Error in fetchParties:', error);
-            throw error; // Propagate the error back to the route handler
+            const parties = await partyFacade.getGroupsFromRedis();
+            return res.status(200).json(parties);
+        } catch (error: any) {
+            console.error('Error retrieving groups:', error);
+            return res.status(500).json({
+                message: 'An error occurred while retrieving groups',
+                error: error.message || error.toString()
+            });
         }
     }
 }

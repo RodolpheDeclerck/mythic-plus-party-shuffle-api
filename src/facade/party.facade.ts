@@ -27,21 +27,14 @@ class PartyFacade {
     }
 
     // Méthode pour récupérer les groupes à partir de Redis
-    async getPartiesFromRedis(): Promise<Party[]> {
+    async getGroupsFromRedis(): Promise<Party[]> {
         const redisKey = 'party:1';
-        try {
-            const partiesJson = await redisClient.get(redisKey);
-            console.log('Data from Redis:', partiesJson);
-    
-            if (partiesJson) {
-                return JSON.parse(partiesJson) as Party[];
-            } else {
-                console.log('No parties found in Redis, returning an empty array.');
-                return []; // Return an empty array if no data is found
-            }
-        } catch (error) {
-            console.error('Error retrieving parties from Redis:', error);
-            throw error; // Make sure to rethrow the error to be caught in the controller
+        const partiesJson = await redisClient.get(redisKey);
+
+        if (partiesJson) {
+            return JSON.parse(partiesJson);
+        } else {
+            throw new Error('No parties found in Redis');
         }
     }
 
