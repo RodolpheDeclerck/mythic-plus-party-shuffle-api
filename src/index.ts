@@ -1,7 +1,6 @@
 // index.ts
 import { AppDataSource } from './config/data-source.js';  // Import relatif
 import httpServer from './app.js';  // Assurez-vous que httpServer est exporté de app.ts
-import express from 'express';
 
 const PORT = parseInt(process.env.PORT || '8080', 10);  // Convertir en nombre
 
