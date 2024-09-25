@@ -21,7 +21,7 @@ class PartyFacade {
         const parties = await this.partyService.shuffleGroups(characters);
 
         // Sauvegarder les groupes dans Redis
-        await this.savePartiesToRedis(parties);
+        await this.saveGroupsToRedis(parties);
 
         return parties;
     }
@@ -39,14 +39,8 @@ class PartyFacade {
     }
 
     // Méthode privée pour sauvegarder les groupes dans Redis
-    async savePartiesToRedis(parties: Party[]): Promise<void> {
-        const redisKey = 'party:1';
-        try {
-            await redisClient.set(redisKey, JSON.stringify(parties));
-        } catch (error) {
-            console.error('Error saving parties to Redis:', error);
-            throw new Error('Failed to save parties');
-        }
+    private async saveGroupsToRedis(parties: Party[]): Promise<void> {
+        await redisClient.set('party:1', JSON.stringify(parties));
     }
 }
 
