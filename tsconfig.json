@@ -1,19 +1,29 @@
 {
   "compilerOptions": {
-    "target": "ES6",                          
-    "module": "ESNext",   
-    "moduleResolution": "node",   // Ajoutez cette ligne
-    "rootDir": "./src",           
-    "outDir": "./dist",                       
-    "strict": true,                           
-    "esModuleInterop": true,                  
+    "target": "ES6",
+    "module": "ESNext",
+    "moduleResolution": "node", // Ajoutez cette ligne
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "noImplicitAny": true,
     "sourceMap": true,
-    "forceConsistentCasingInFileNames": true,    
-    "experimentalDecorators": true,            // Active les décorateurs expérimentaux
-    "emitDecoratorMetadata": true       
+    "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators": true, // Active les décorateurs expérimentaux
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": [
+        "node_modules/*"
+      ]
+    }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
