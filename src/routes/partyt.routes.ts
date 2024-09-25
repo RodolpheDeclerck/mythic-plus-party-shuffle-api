@@ -17,6 +17,13 @@ router.get('/parties/shuffle', async (req, res) => {
 
 
 // Route pour récupérer les groupes actuels à partir de Redis
-router.get('/parties', partyController.getParties);
+router.get('/parties/shuffle', async (req, res) => {
+    try {
+        const shuffledParties = await partyController.getParties(req, res); // Retourne les groupes mélangés
+        res.status(200).json(shuffledParties); // Renvoie les groupes mélangés
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to get parties', error });
+    }
+});
 
 export default router;
