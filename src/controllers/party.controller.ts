@@ -16,13 +16,14 @@ class PartyController {
         }
     }
 
-    async getParties(): Promise<Party[]> {
+    async fetchParties(): Promise<Party[]> {
         try {
-            const parties = await partyFacade.getGroupsFromRedis();
-            return parties; // Return the parties instead of sending a response
+            // Appelle la méthode du service pour récupérer les parties
+            const parties = await partyFacade.getPartiesFromRedis();
+            return parties;
         } catch (error) {
-            console.error('Error in getParties:', error);
-            throw new Error('Failed to retrieve parties');
+            console.error('Erreur lors de la récupération des parties:', error);
+            throw new Error('Échec de la récupération des parties');
         }
     }
 }

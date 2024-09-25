@@ -26,21 +26,22 @@ class PartyFacade {
         return parties;
     }
 
-    // Méthode pour récupérer les groupes depuis Redis
-    async getGroupsFromRedis(): Promise<Party[]> {
+    // Méthode pour récupérer les groupes à partir de Redis
+    async getPartiesFromRedis(): Promise<Party[]> {
         const redisKey = 'party:1';
         try {
             const partiesJson = await redisClient.get(redisKey);
 
             if (partiesJson) {
-                return JSON.parse(partiesJson);
+                // Retourner le tableau des parties
+                return JSON.parse(partiesJson) as Party[];
             } else {
-                // Return an empty array instead of throwing an error
+                // Retourner un tableau vide si aucune donnée n'est trouvée
                 return [];
             }
         } catch (error) {
-            console.error('Error retrieving parties from Redis:', error);
-            throw new Error('Failed to retrieve parties');
+            console.error('Erreur lors de la récupération des parties depuis Redis:', error);
+            throw new Error('Échec de la récupération des parties');
         }
     }
 
