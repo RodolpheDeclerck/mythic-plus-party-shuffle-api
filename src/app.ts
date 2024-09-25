@@ -12,7 +12,7 @@ app.use(express.json());
 const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(cors({
-  origin: isProduction ? 'https://your-frontend-domain.com' : 'http://localhost:3000',
+  origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',
   methods: ['GET', 'POST'],
 }));
 
