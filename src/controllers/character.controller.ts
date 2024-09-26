@@ -10,10 +10,10 @@ class CharacterController {
     this.characterService = new CharacterService();
   }
 
-  // Method to create a new character
+  // Méthode pour créer un personnage
   async createCharacter(req: Request, res: Response): Promise<Response> {
     try {
-      const createCharacterDto: CharacterDto = req.body;
+      const createCharacterDto: CharacterDto = req.body;  // Validation implicite
 
       // Validate that specialization is part of the Specialization enum
       if (!Object.values(Specialization).includes(createCharacterDto.specialization as Specialization)) {
@@ -23,47 +23,43 @@ class CharacterController {
       // Create a new character instance
       const newCharacter = await this.characterService.createCharacter(createCharacterDto);
       return res.status(201).json(newCharacter);
-    } catch (error: unknown) {
-      console.error('Error creating character:', error);
+    } catch (error: any) {
+      console.error('Error creating character:', error);  // Log the error
       return res.status(500).json({
         message: 'An error occurred',
-        error: (error instanceof Error) ? error.message : error
+        error: error.message || error.toString()  // Return detailed error message
       });
     }
   }
 
-  // Method to retrieve all characters
+  // Méthode pour obtenir tous les personnages
   async getAllCharacters(req: Request, res: Response): Promise<Response> {
     try {
       const characters = await this.characterService.getAllCharacters();
       return res.json(characters);
-    } catch (error: unknown) {
-      console.error('Error getting characters:', error);
+    } catch (error: any) {
+      console.error('Error getting characters:', error);  // Log the error
       return res.status(500).json({
         message: 'An error occurred',
-        error: (error instanceof Error) ? error.message : error
+        error: error.message || error.toString()  // Return detailed error message
       });
     }
   }
 
-  // Method to delete a character by ID
   async deleteCharacter(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;  // Get the character ID from the request parameters
+    const { id } = req.params; // Récupérer l'ID du personnage à supprimer
 
     try {
       await this.characterService.deleteCharacter(parseInt(id));
       return res.status(200).json({ message: 'Character deleted successfully' });
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error deleting character:', error);
-      return res.status(500).json({
-        message: (error instanceof Error) ? error.message : 'Failed to delete character',
-      });
+      return res.status(500).json({ message: error.message || 'Failed to delete character' });
     }
   }
 
-  // Method to get a character by ID
   async getCharacterById(req: Request, res: Response): Promise<Response> {
-    const { id } = req.params;  // Get the character ID from the request parameters
+    const { id } = req.params; // Récupérer l'ID du personnage
 
     try {
       const character = await this.characterService.getCharacterById(parseInt(id));
@@ -73,21 +69,18 @@ class CharacterController {
       }
 
       return res.status(200).json(character);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error getting character by ID:', error);
-      return res.status(500).json({
-        message: (error instanceof Error) ? error.message : 'Failed to get character'
-      });
+      return res.status(500).json({ message: error.message || 'Failed to get character' });
     }
   }
 
-  // Method to update a character by ID
   async updateCharacter(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
     const updateCharacterDto: CharacterDto = req.body;
 
     try {
-      // Validate that specialization is part of the Specialization enum
+      // Validation de la spécialisation
       if (!Object.values(Specialization).includes(updateCharacterDto.specialization as Specialization)) {
         return res.status(400).json({ message: 'Invalid specialization' });
       }
@@ -99,15 +92,15 @@ class CharacterController {
       }
 
       return res.status(200).json(updatedCharacter);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error updating character:', error);
       return res.status(500).json({
         message: 'Failed to update character',
-        error: (error instanceof Error) ? error.message : error,
+        error: error.message || error.toString(),
       });
     }
   }
 }
 
-// Export an instance of the CharacterController
+// Exportation de la classe sans utiliser `new`
 export const characterController = new CharacterController();

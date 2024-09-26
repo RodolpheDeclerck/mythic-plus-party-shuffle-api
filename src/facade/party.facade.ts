@@ -40,8 +40,21 @@ class PartyFacade {
 
     // Méthode privée pour sauvegarder les groupes dans Redis
     private async saveGroupsToRedis(parties: Party[]): Promise<void> {
-        await redisClient.set('party:1', JSON.stringify(parties));
+        try {
+            // Log des données à sauvegarder dans Redis
+            console.log('Données à sauvegarder dans Redis:', JSON.stringify(parties));
+
+            // Écriture dans Redis
+            await redisClient.set('party:1', JSON.stringify(parties));
+
+            // Confirmation de l'écriture réussie
+            console.log('Écriture dans Redis réussie pour party:1');
+        } catch (error) {
+            // Log en cas d'erreur
+            console.error('Erreur lors de l\'écriture des groupes dans Redis:', error);
+        }
     }
+
 }
 
 export const partyFacade = new PartyFacade();

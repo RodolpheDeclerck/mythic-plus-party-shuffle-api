@@ -3,16 +3,13 @@ import { Party } from '../models/party.entity.js';
 import { partyFacade } from '../facade/party.facade.js';
 
 class PartyController {
-    async shuffleParties(req: Request, res: Response): Promise<Response> {
+    async shuffleParties(req: Request): Promise<Party[]> {
         try {
             const parties = await partyFacade.shuffleAndSaveGroups();
-            return res.status(200).json(parties);
+            return parties; // Retourne les parties mélangées
         } catch (error: any) {
             console.error('Error shuffling groups:', error);
-            return res.status(500).json({
-                message: 'An error occurred while shuffling groups',
-                error: error.message || error.toString()
-            });
+            throw new Error('An error occurred while shuffling groups');
         }
     }
 

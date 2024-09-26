@@ -1,7 +1,13 @@
 import { createClient } from 'redis';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
 const redisClient = createClient({
-  url: 'rediss://default:AVA_AAIjcDFkM2U2NmU3M2I5NzI0YzZhYjM4ZTgyNDY0MTEwMjA0N3AxMA@moved-osprey-20543.upstash.io:6379'  // Changez l'URL si nécessaire
+  url: redisUrl,
+  database: 0,
 });
 
 // Gestion des erreurs
@@ -11,6 +17,12 @@ redisClient.on('error', (err) => {
 
 redisClient.connect().then(async () => {
   try {
+    console.log('Redis URL:', redisUrl);
+    
+    // Vérifier la connexion
+    const pong = await redisClient.ping();
+    console.log('Ping:', pong);
+
     // Écrire une clé dans Redis
     await redisClient.set('testKey', 'testValue');
     console.log('Écriture réussie dans Redis');
@@ -19,8 +31,12 @@ redisClient.connect().then(async () => {
     const value = await redisClient.get('testKey');
     console.log('Lecture réussie :', value);
 
+    // Vérifier si la clé existe
+    const exists = await redisClient.exists('testKey');
+    console.log('testKey existe:', exists ? 'Oui' : 'Non');
+
     // Test d'enregistrement d'une "party"
-    await redisClient.set('party:1', JSON.stringify([]));
+    await redisClient.set('party:2', JSON.stringify([]));
     console.log('Party enregistrée avec succès');
 
   } catch (err) {
