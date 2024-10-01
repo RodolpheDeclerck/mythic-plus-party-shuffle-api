@@ -4,8 +4,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import characterRoutes from './routes/character.routes.js';
 import metadataRoutes from './routes/metadata.routes.js';
-import partyRoutes from './routes/partyt.routes.js';
-import { partyController } from './controllers/party.controller.js';
+import partyRoutes from './routes/party.routes.js';
 
 const app = express();
 app.use(express.json());

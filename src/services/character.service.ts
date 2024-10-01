@@ -2,6 +2,7 @@ import { AppDataSource } from '../config/data-source.js';
 import { Character } from '../models/character.entity.js';
 import { SpecializationDetails } from '../data/specializationsDetails.data.js';
 import { CharacterDto } from '../dto/character.dto.js';
+import { In } from 'typeorm';
 
 export class CharacterService {
     async createCharacter(data: CharacterDto): Promise<Character> {
@@ -48,6 +49,23 @@ export class CharacterService {
         await characterRepository.remove(character);
     }
 
+    async deleteCharacters(ids: number[]): Promise<void> {
+        const characterRepository = AppDataSource.getRepository(Character);
+
+        // Retrieve characters with the provided IDs
+        const characters = await characterRepository.find({
+            where: {
+                id: In(ids),
+            },
+        });
+
+        if (characters.length !== ids.length) {
+            throw new Error('One or more characters not found');
+        }
+
+        await characterRepository.remove(characters);
+    }
+
     async getCharacterById(id: number): Promise<Character | null> {
         const characterRepository = AppDataSource.getRepository(Character);
 
@@ -87,5 +105,24 @@ export class CharacterService {
         await characterRepository.save(character);
 
         return character;
+    }
+
+    async upsertCharacter(character: CharacterDto): Promise<Character | null> {
+        if (character.id && isNaN(Number(character.id))) {
+            throw new Error('Invalid character ID');
+        }
+
+        let existingCharacter;
+
+        if (character.id) {
+            existingCharacter = await this.getCharacterById(character.id);
+        }
+
+        if (existingCharacter) {
+            return await this.updateCharacter(character.id, character);
+        }
+        else {
+            return await this.createCharacter(character);
+        }
     }
 }

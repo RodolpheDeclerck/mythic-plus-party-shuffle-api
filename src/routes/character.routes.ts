@@ -20,6 +20,15 @@ router.get('/characters', (req, res) => characterController.getAllCharacters(req
 // GET request to get a character by ID
 router.get('/characters/:id', (req, res) => characterController.getCharacterById(req, res));
 
+router.put('/characters/upsert', async (req, res) => {
+  try {
+    await characterController.upsertCharacter(req, res);
+    io.emit('character-updated');  // Émettre un événement après la mise à jour
+  } catch (error: any) {
+    res.status(500).json({ message: 'Failed to upsert character', error });
+  }
+});
+
 // PUT request to update a character by ID
 router.put('/characters/:id', async (req, res) => {
   try {
@@ -37,6 +46,15 @@ router.delete('/characters/:id', async (req, res) => {
     io.emit('character-updated');  // Émettre un événement après la suppression
   } catch (error : any) {
     res.status(500).json({ message: 'Failed to delete character', error });
+  }
+});
+
+router.post('/characters/remove', async (req, res) => {
+  try {
+    await characterController.deleteCharacters(req, res);
+    io.emit('character-updated');  // Émettre un événement après la suppression
+  } catch (error : any) {
+    res.status(500).json({ message: 'Failed to delete characters', error });
   }
 });
 

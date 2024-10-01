@@ -58,6 +58,18 @@ class CharacterController {
     }
   }
 
+  async deleteCharacters(req: Request, res: Response): Promise<Response> {
+    try {
+      const { ids } = req.body;
+
+      await this.characterService.deleteCharacters(ids);
+
+      return res.status(200).json({ message: 'Characters deleted successfully' });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  }
+
   async getCharacterById(req: Request, res: Response): Promise<Response> {
     const { id } = req.params; // Récupérer l'ID du personnage
 
@@ -96,6 +108,31 @@ class CharacterController {
       console.error('Error updating character:', error);
       return res.status(500).json({
         message: 'Failed to update character',
+        error: error.message || error.toString(),
+      });
+    }
+  }
+
+  async upsertCharacter(req: Request, res: Response): Promise<Response> {
+    const updateCharacterDto: CharacterDto = req.body;
+
+    try {
+      // Validation de la spécialisation
+      if (!Object.values(Specialization).includes(updateCharacterDto.specialization as Specialization)) {
+        return res.status(400).json({ message: 'Invalid specialization' });
+      }
+
+      const updatedCharacter = await this.characterService.upsertCharacter(updateCharacterDto);
+
+      if (!updatedCharacter) {
+        return res.status(404).json({ message: 'Error upserting character' });
+      }
+
+      return res.status(200).json(updatedCharacter);
+    } catch (error: any) {
+      console.error('Error upserting character:', error);
+      return res.status(500).json({
+        message: 'Failed to upsert character',
         error: error.message || error.toString(),
       });
     }

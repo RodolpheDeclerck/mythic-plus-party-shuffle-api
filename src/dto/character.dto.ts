@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, isNumber } from 'class-validator';
 import { CharacterClass } from '../enums/characterClass.enum.js';
 import { Specialization } from '../enums/specialization.enum.js';
 
@@ -6,7 +6,9 @@ import { Specialization } from '../enums/specialization.enum.js';
  * DTO pour la création d'un personnage
  */
 export class CharacterDto {
-  
+
+  id!: number;
+
   @IsString()
   @IsNotEmpty({ message: 'Le nom ne doit pas être vide' })
   name!: string;

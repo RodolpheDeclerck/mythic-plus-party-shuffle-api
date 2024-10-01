@@ -55,6 +55,9 @@ class PartyFacade {
         }
     }
 
+    async deleteGroupsFromRedis(): Promise<void> {
+        await redisClient.set('party:1',JSON.stringify([]));
+    }
 }
 
 export const partyFacade = new PartyFacade();

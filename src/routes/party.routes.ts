@@ -11,7 +11,7 @@ router.get('/parties/shuffle', async (req, res) => {
         const shuffledParties = await partyController.shuffleParties(req);
 
         // Émission de l'événement WebSocket avec les groupes mélangés
-        io.emit('parties-shuffled', shuffledParties);
+        io.emit('parties-updated', shuffledParties);
 
         // Envoyer la réponse HTTP
         return res.status(200).json(shuffledParties);
@@ -20,6 +20,14 @@ router.get('/parties/shuffle', async (req, res) => {
     }
 });
 
+router.delete('/parties', async (req, res) => {
+    try {
+        await partyController.deleteParties(req, res);
+        io.emit('parties-updated');  // Émettre un événement lorsque les groupes sont supprimés)
+    } catch (error: any) {
+        res.status(500).json({ message: 'Failed to delete parties', error });
+    }
+});
 
 
 // Route pour récupérer les groupes actuels à partir de Redis

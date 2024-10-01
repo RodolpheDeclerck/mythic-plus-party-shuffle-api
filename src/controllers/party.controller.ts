@@ -25,6 +25,19 @@ class PartyController {
             });
         }
     }
+
+    async deleteParties(req: Request, res: Response): Promise<Response> {
+        try {
+            await partyFacade.deleteGroupsFromRedis();
+            return res.status(200).json({ message: 'Parties deleted successfully' });
+        } catch (error: any) {
+            console.error('Error deleting groups:', error);
+            return res.status(500).json({
+                message: 'An error occurred while deleting groups',
+                error: error.message || error.toString()
+            });
+        }
+    }
 }
 
 // Exportation de la classe sans utiliser `new`
