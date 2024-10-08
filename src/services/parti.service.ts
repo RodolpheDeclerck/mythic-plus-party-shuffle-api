@@ -3,6 +3,7 @@ import { SpecializationDetails } from '../data/specializationsDetails.data.js';
 import { Party } from '../models/party.entity.js';
 import { CharacterService } from './character.service.js';
 import e from 'cors';
+import { CharacterClass } from '../enums/characterClass.enum.js';
 
 export class PartyService {
 
@@ -68,7 +69,7 @@ export class PartyService {
     private assignHealersToParties(parties: Party[], healers: Character[], usedCharacters: Set<number>) {
         parties.forEach(party => {
             const tankHasBR = party.members.some(char => SpecializationDetails[char.specialization].battleRez);
-            let healToAdd = this.findHealer(healers, usedCharacters, tankHasBR);
+            let healToAdd = this.findHealer(healers, usedCharacters, tankHasBR, party.members[0].characterClass);
             if (healToAdd) {
                 party.members.push(healToAdd);
                 usedCharacters.add(healToAdd.id);
@@ -76,18 +77,20 @@ export class PartyService {
         });
     }
 
-    private findHealer(healers: Character[], usedCharacters: Set<number>, tankHasBR: boolean): Character | undefined {
+    private findHealer(healers: Character[], usedCharacters: Set<number>, tankHasBR: boolean, characterClass?: string): Character | undefined {
         const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
         let healToAdd: Character | undefined;
 
+        const avoidSameCharacterClass = shuffleArray(healers).some(heal => heal.characterClass === characterClass) && shuffleArray(healers).some(heal => heal.characterClass != characterClass) ? true : false;
+
         if (!tankHasBR) {
-            healToAdd = shuffleArray(healers).find(heal => SpecializationDetails[heal.specialization].battleRez && !usedCharacters.has(heal.id));
+            healToAdd = shuffleArray(healers).find(heal => SpecializationDetails[heal.specialization].battleRez && !usedCharacters.has(heal.id) && (!avoidSameCharacterClass || heal.characterClass != characterClass));
         }
         if (!healToAdd) {
-            healToAdd = shuffleArray(healers).find(heal => SpecializationDetails[heal.specialization].bloodLust && !usedCharacters.has(heal.id));
+            healToAdd = shuffleArray(healers).find(heal => SpecializationDetails[heal.specialization].bloodLust && !usedCharacters.has(heal.id) && (!avoidSameCharacterClass || heal.characterClass != characterClass));
         }
         if (!healToAdd) {
-            healToAdd = shuffleArray(healers).find(heal => !usedCharacters.has(heal.id));
+            healToAdd = shuffleArray(healers).find(heal => !usedCharacters.has(heal.id) && (!avoidSameCharacterClass || heal.characterClass != characterClass));
         }
 
         return healToAdd;
@@ -100,21 +103,21 @@ export class PartyService {
             const groupHasBL = party.members.some(char => SpecializationDetails[char.specialization].bloodLust);
             const groupHasBR = party.members.some(char => SpecializationDetails[char.specialization].battleRez);
             if (!groupHasBL && groupHasBR) {
-                const blToAdd = this.findCharacterWithBL(cacs, dists, usedCharacters);
+                const blToAdd = this.findCharacterWithBL(cacs, dists, usedCharacters, party);
                 if (blToAdd) {
                     party.members.push(blToAdd);
                     usedCharacters.add(blToAdd.id);
                 }
             }
             else if (groupHasBL && !groupHasBR) {
-                const brToAdd = this.findCharacterWithBR(cacs, dists, usedCharacters);
+                const brToAdd = this.findCharacterWithBR(cacs, dists, usedCharacters, party);
                 if (brToAdd) {
                     party.members.push(brToAdd);
                     usedCharacters.add(brToAdd.id);
                 }
             }
             else if (!groupHasBL && !groupHasBR) {
-                const characterToAdd = this.findCharacterWithBLOrBR(cacs, dists, usedCharacters);
+                const characterToAdd = this.findCharacterWithBLOrBR(cacs, dists, usedCharacters, party);
                 if (characterToAdd) {
                     party.members.push(characterToAdd);
                     usedCharacters.add(characterToAdd.id);
@@ -133,21 +136,21 @@ export class PartyService {
                 const groupHasDIST = parties.some(party => party.members.some(char => SpecializationDetails[char.specialization].role === 'DIST'));
 
                 if (!groupHasCAC) {
-                    const cacsToAdd = this.findCharacterCAC(cacs, dists, usedCharacters);
+                    const cacsToAdd = this.findCharacterCAC(cacs, dists, usedCharacters, party);
                     if (cacsToAdd) {
                         party.members.push(cacsToAdd);
                         usedCharacters.add(cacsToAdd.id);
                     }
                 }
                 else if (!groupHasDIST) {
-                    const distsToAdd = this.findCharacterDIST(cacs, dists, usedCharacters);
+                    const distsToAdd = this.findCharacterDIST(cacs, dists, usedCharacters, party);
                     if (distsToAdd) {
                         party.members.push(distsToAdd);
                         usedCharacters.add(distsToAdd.id);
                     }
                 }
                 else {
-                    const characterToAdd = this.findRandomDPS(cacs, dists, usedCharacters);
+                    const characterToAdd = this.findRandomDPS(cacs, dists, usedCharacters, party);
                     if (characterToAdd) {
                         party.members.push(characterToAdd);
                         usedCharacters.add(characterToAdd.id);
@@ -161,34 +164,64 @@ export class PartyService {
 
     }
 
-    private findCharacterWithBL(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+    private findCharacterWithBL(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
         const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].bloodLust && !usedCharacters.has(char.id));
+        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
+        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
+        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
+        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].bloodLust && (!avoidSameClass || !partyClasses.has(char.characterClass)));
     }
 
-    private findCharacterWithBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+    private findCharacterWithBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
         const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].battleRez && !usedCharacters.has(char.id));
+        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
+        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
+        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
+        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].battleRez && (!avoidSameClass || !partyClasses.has(char.characterClass)));
     }
 
-    private findCharacterWithBLOrBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+    private findCharacterWithBLOrBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
         const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        return shuffleArray([...cacs, ...dists]).find(char => (SpecializationDetails[char.specialization].bloodLust || SpecializationDetails[char.specialization].battleRez) && !usedCharacters.has(char.id));
+        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
+        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
+        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
+        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].bloodLust && (!avoidSameClass || !partyClasses.has(char.characterClass)));
     }
 
-    private findCharacterCAC(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+    private findCharacterCAC(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
         const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].role === 'CAC');
+        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
+        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
+        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
+        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].role === 'CAC' && (!avoidSameClass || !partyClasses.has(char.characterClass)));
     }
 
-    private findCharacterDIST(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+    private findCharacterDIST(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
         const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].role === 'DIST');
+        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
+        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
+        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
+        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].role === 'DIST' && (!avoidSameClass || !partyClasses.has(char.characterClass)));
     }
 
-    private findRandomDPS(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+    private findRandomDPS(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
         const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        return shuffleArray([...cacs, ...dists]).find(char => !usedCharacters.has(char.id));
+        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
+        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
+        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
+        return shuffleArray(unusedCharPool).find(char => !usedCharacters.has(char.id) && (!avoidSameClass || !partyClasses.has(char.characterClass)));
+    }
+
+    private shouldAvoidSameClass(partyClasses: Set<CharacterClass>, unusedCharPool: Character[]): boolean {
+
+        // Vérifier s'il y a un personnage inutilisé avec une classe déjà présente dans party
+        const hasSameClassInPool = unusedCharPool.some(char => partyClasses.has(char.characterClass));
+
+        // Vérifier s'il y a un personnage inutilisé avec une classe non présente dans party
+        const hasNewClassInPool = unusedCharPool.some(char => !partyClasses.has(char.characterClass));
+
+        // Retourner true si les deux conditions sont remplies
+        return hasSameClassInPool && hasNewClassInPool;
     }
 
     // Étape 4 : Créer un groupe pour chaque HEAL restant
