@@ -2,6 +2,7 @@ import { Character } from '../models/character.entity';
 import { SpecializationDetails } from '../data/specializationsDetails.data.js';
 import { Party } from '../models/party.entity.js';
 import { CharacterService } from './character.service.js';
+import e from 'cors';
 
 export class PartyService {
 
@@ -25,23 +26,17 @@ export class PartyService {
         // Ajouter un HEAL dans chaque groupe en fonction de BR/BL
         this.assignHealersToParties(parties, healers, usedCharacters);
 
-        // Ajouter un CAC/DIST avec BL dans chaque groupe sans BL
-        this.assignCacsAndDistsWithBL(parties, cacs, dists, usedCharacters);
-
         // Créer un groupe pour chaque HEAL restant
         this.assignRemainingHealersToNewParties(parties, healers, usedCharacters);
 
-        // Ajouter CAC/DIST avec BL et BR pour les groupes sans TANK
-        this.assignCacsAndDistsWithoutTank(parties, cacs, dists, usedCharacters);
+        // Ajouter un CAC/DIST avec BR ou BL dans chaque groupe sans BR ou BL
+        this.assignCacsAndDistsWithBROrBL(parties, cacs, dists, usedCharacters);
 
-        // Ajouter un CAC/DIST avec BL dans les groupes avec un TANK sans BL
-        this.assignCacsAndDistsWithoutBL(parties, cacs, dists, usedCharacters);
+        // Ajouter un autre CAC/DIST avec BR ou BL dans chaque groupe sans BR ou BL
+        this.assignCacsAndDistsWithBROrBL(parties, cacs, dists, usedCharacters);
 
-        // Ajouter un CAC/DIST avec BR dans les groupes avec un TANK sans BR
-        this.assignCacsAndDistsWithoutBR(parties, cacs, dists, usedCharacters);
-
-        // Répartir les CAC/DIST restants, sans dépasser 5 membres par groupe
-        this.assignRemainingCacsAndDists(parties, cacs, dists, usedCharacters);
+        // Completer les groupes avec des CAC/DIST jusqu'a 5 membres en privilégiant le fait d'avoir au moins un CAC et un DIST par groupe
+        this.completePartiesWithCacsAndDists(parties, cacs, dists, usedCharacters);
 
         // Enregistrer les groupes dans Redis
         return parties;
@@ -98,23 +93,102 @@ export class PartyService {
         return healToAdd;
     }
 
+
     // Étape 3 : Ajouter un CAC/DIST avec BL dans chaque groupe sans BL
-    private assignCacsAndDistsWithBL(parties: Party[], cacs: Character[], dists: Character[], usedCharacters: Set<number>) {
+    private assignCacsAndDistsWithBROrBL(parties: Party[], cacs: Character[], dists: Character[], usedCharacters: Set<number>) {
         parties.forEach(party => {
             const groupHasBL = party.members.some(char => SpecializationDetails[char.specialization].bloodLust);
-            if (!groupHasBL) {
+            const groupHasBR = party.members.some(char => SpecializationDetails[char.specialization].battleRez);
+            if (!groupHasBL && groupHasBR) {
                 const blToAdd = this.findCharacterWithBL(cacs, dists, usedCharacters);
                 if (blToAdd) {
                     party.members.push(blToAdd);
                     usedCharacters.add(blToAdd.id);
                 }
             }
+            else if (groupHasBL && !groupHasBR) {
+                const brToAdd = this.findCharacterWithBR(cacs, dists, usedCharacters);
+                if (brToAdd) {
+                    party.members.push(brToAdd);
+                    usedCharacters.add(brToAdd.id);
+                }
+            }
+            else if (!groupHasBL && !groupHasBR) {
+                const characterToAdd = this.findCharacterWithBLOrBR(cacs, dists, usedCharacters);
+                if (characterToAdd) {
+                    party.members.push(characterToAdd);
+                    usedCharacters.add(characterToAdd.id);
+                }
+            }
         });
+    }
+
+    private completePartiesWithCacsAndDists(parties: Party[], cacs: Character[], dists: Character[], usedCharacters: Set<number>) {
+        parties.forEach(party => {
+
+            while (party.members.length < 5) {
+
+
+                const groupHasCAC = parties.some(party => party.members.some(char => SpecializationDetails[char.specialization].role === 'CAC'));
+                const groupHasDIST = parties.some(party => party.members.some(char => SpecializationDetails[char.specialization].role === 'DIST'));
+
+                if (!groupHasCAC) {
+                    const cacsToAdd = this.findCharacterCAC(cacs, dists, usedCharacters);
+                    if (cacsToAdd) {
+                        party.members.push(cacsToAdd);
+                        usedCharacters.add(cacsToAdd.id);
+                    }
+                }
+                else if (!groupHasDIST) {
+                    const distsToAdd = this.findCharacterDIST(cacs, dists, usedCharacters);
+                    if (distsToAdd) {
+                        party.members.push(distsToAdd);
+                        usedCharacters.add(distsToAdd.id);
+                    }
+                }
+                else {
+                    const characterToAdd = this.findRandomDPS(cacs, dists, usedCharacters);
+                    if (characterToAdd) {
+                        party.members.push(characterToAdd);
+                        usedCharacters.add(characterToAdd.id);
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+        });
+
     }
 
     private findCharacterWithBL(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
         const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
         return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].bloodLust && !usedCharacters.has(char.id));
+    }
+
+    private findCharacterWithBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
+        return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].battleRez && !usedCharacters.has(char.id));
+    }
+
+    private findCharacterWithBLOrBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
+        return shuffleArray([...cacs, ...dists]).find(char => (SpecializationDetails[char.specialization].bloodLust || SpecializationDetails[char.specialization].battleRez) && !usedCharacters.has(char.id));
+    }
+
+    private findCharacterCAC(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
+        return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].role === 'CAC');
+    }
+
+    private findCharacterDIST(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
+        return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].role === 'DIST');
+    }
+
+    private findRandomDPS(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
+        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
+        return shuffleArray([...cacs, ...dists]).find(char => !usedCharacters.has(char.id));
     }
 
     // Étape 4 : Créer un groupe pour chaque HEAL restant
@@ -127,98 +201,5 @@ export class PartyService {
                 usedCharacters.add(heal.id);
             }
         });
-    }
-
-    // Étape 5 et 6 : Ajouter CAC/DIST avec BL et BR pour les groupes sans TANK
-    private assignCacsAndDistsWithoutTank(parties: Party[], cacs: Character[], dists: Character[], usedCharacters: Set<number>) {
-        parties.forEach(party => {
-            const hasTank = party.members.some(char => SpecializationDetails[char.specialization].role === 'TANK');
-            if (!hasTank) {
-                const blToAdd = this.findCharacterWithBL(cacs, dists, usedCharacters);
-                if (blToAdd) {
-                    party.members.push(blToAdd);
-                    usedCharacters.add(blToAdd.id);
-                }
-                const brToAdd = this.findCharacterWithBR(cacs, dists, usedCharacters);
-                if (brToAdd) {
-                    party.members.push(brToAdd);
-                    usedCharacters.add(brToAdd.id);
-                }
-            }
-        });
-    }
-
-    private findCharacterWithBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>): Character | undefined {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        return shuffleArray([...cacs, ...dists]).find(char => SpecializationDetails[char.specialization].battleRez && !usedCharacters.has(char.id));
-    }
-
-    // Étape 7 : Ajouter un CAC/DIST avec BL dans les groupes avec un TANK sans BL
-    private assignCacsAndDistsWithoutBL(parties: Party[], cacs: Character[], dists: Character[], usedCharacters: Set<number>) {
-        parties.forEach(party => {
-            const hasTank = party.members.some(char => SpecializationDetails[char.specialization].role === 'TANK');
-            const groupHasBL = party.members.some(char => SpecializationDetails[char.specialization].bloodLust);
-            if (hasTank && !groupHasBL) {
-                const blToAdd = this.findCharacterWithBL(cacs, dists, usedCharacters);
-                if (blToAdd) {
-                    party.members.push(blToAdd);
-                    usedCharacters.add(blToAdd.id);
-                }
-            }
-        });
-    }
-
-    // Étape 8 : Ajouter un CAC/DIST avec BR dans les groupes avec un TANK sans BR
-    private assignCacsAndDistsWithoutBR(parties: Party[], cacs: Character[], dists: Character[], usedCharacters: Set<number>) {
-        parties.forEach(party => {
-            const hasTank = party.members.some(char => SpecializationDetails[char.specialization].role === 'TANK');
-            const groupHasBR = party.members.some(char => SpecializationDetails[char.specialization].battleRez);
-            if (hasTank && !groupHasBR) {
-                const brToAdd = this.findCharacterWithBR(cacs, dists, usedCharacters);
-                if (brToAdd) {
-                    party.members.push(brToAdd);
-                    usedCharacters.add(brToAdd.id);
-                }
-            }
-        });
-    }
-
-    // Étape 9 : Répartir les CAC/DIST restants
-    private assignRemainingCacsAndDists(parties: Party[], cacs: Character[], dists: Character[], usedCharacters: Set<number>) {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-
-        shuffleArray([...cacs, ...dists]).forEach(char => {
-            if (!usedCharacters.has(char.id)) {
-                for (const party of parties) {
-                    const canAddToParty = this.canAddCharacterToParty(party, char);
-                    if (canAddToParty) {
-                        party.members.push(char);
-                        usedCharacters.add(char.id);
-                        break;
-                    }
-                }
-
-                if (!usedCharacters.has(char.id)) {
-                    const newParty = new Party();
-                    newParty.members = [char];
-                    parties.push(newParty);
-                    usedCharacters.add(char.id);
-                }
-            }
-        });
-    }
-
-    private canAddCharacterToParty(party: Party, char: Character): boolean {
-        const hasTank = party.members.some(char => SpecializationDetails[char.specialization].role === 'TANK');
-        const hasHeal = party.members.some(char => SpecializationDetails[char.specialization].role === 'HEAL');
-        const cacsInParty = party.members.filter(char => SpecializationDetails[char.specialization].role === 'CAC').length;
-        const distsInParty = party.members.filter(char => SpecializationDetails[char.specialization].role === 'DIST').length;
-
-        return (
-            (!hasTank && party.members.length < 4) ||
-            (!hasHeal && party.members.length < 4) ||
-            (!hasTank && !hasHeal && party.members.length < 3) ||
-            (hasTank && hasHeal && party.members.length < 5 && ((char.role === 'DIST' && distsInParty < 2) || (char.role === 'CAC' && cacsInParty < 2)))
-        );
     }
 }
