@@ -38,8 +38,8 @@ class PartyFacade {
         }
     }
 
-    // Méthode privée pour sauvegarder les groupes dans Redis
-    private async saveGroupsToRedis(parties: Party[]): Promise<void> {
+    // Méthode pour sauvegarder les groupes dans Redis
+    async saveGroupsToRedis(parties: Party[]): Promise<void> {
         try {
             // Log des données à sauvegarder dans Redis
             console.log('Données à sauvegarder dans Redis:', JSON.stringify(parties));
@@ -56,7 +56,11 @@ class PartyFacade {
     }
 
     async deleteGroupsFromRedis(): Promise<void> {
-        await redisClient.set('party:1',JSON.stringify([]));
+        await redisClient.set('party:1', JSON.stringify([]));
+    }
+
+    async createOrUpdatePartiesToRedis(parties: Party[]): Promise<void> {
+        this.saveGroupsToRedis(parties);
     }
 }
 

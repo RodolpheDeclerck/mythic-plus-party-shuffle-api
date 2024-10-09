@@ -38,6 +38,20 @@ class PartyController {
             });
         }
     }
+
+    async createOrUpdateParties(req: Request, res: Response): Promise<Response> {
+        try {
+            const parties: Party[] = req.body;
+            await partyFacade.createOrUpdatePartiesToRedis(parties);
+            return res.status(200).json({ message: 'Parties created or updated successfully' });
+        } catch (error: any) {
+            console.error('Error creating or updating groups:', error);
+            return res.status(500).json({
+                message: 'An error occurred while creating or updating groups',
+                error: error.message || error.toString()
+            });
+        }
+    }
 }
 
 // Exportation de la classe sans utiliser `new`

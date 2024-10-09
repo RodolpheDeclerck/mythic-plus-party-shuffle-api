@@ -29,6 +29,11 @@ router.delete('/parties', async (req, res) => {
     }
 });
 
+router.post('/parties', async (req, res) => {
+    await partyController.createOrUpdateParties(req, res);
+    io.emit('parties-updated');  // Émettre un événement lorsque les groupes sont supprimés)
+})
+
 
 // Route pour récupérer les groupes actuels à partir de Redis
 router.get('/parties', partyController.getParties);
