@@ -1,21 +1,15 @@
-import { Character } from '../models/character.entity';
+import { Character } from '../models/character.entity.js';
 import { SpecializationDetails } from '../data/specializationsDetails.data.js';
 import { Party } from '../models/party.entity.js';
-import { CharacterService } from './character.service.js';
-import e from 'cors';
 import { CharacterClass } from '../enums/characterClass.enum.js';
+import redisClient from '../config/redis-client.js';
 
-export class PartyService {
-
-    private characterService: CharacterService;
-
-    constructor() {
-        this.characterService = new CharacterService();
-    }
+class PartyService {
 
     // Fonction principale pour mélanger les groupes
     async shuffleGroups(characters: Character[]): Promise<Party[]> {
         const parties: Party[] = [];
+
         const usedCharacters = new Set<number>(); // Pour éviter les doublons
 
         // Filtrer les personnages selon leur rôle
@@ -41,6 +35,43 @@ export class PartyService {
 
         // Enregistrer les groupes dans Redis
         return parties;
+    }
+
+    // Méthode pour récupérer les groupes à partir de Redis
+    async getGroupsFromRedis(): Promise<Party[]> {
+        const redisKey = 'party:1';
+        const partiesJson = await redisClient.get(redisKey);
+
+        if (partiesJson) {
+            return JSON.parse(partiesJson);
+        } else {
+            throw new Error('No parties found in Redis');
+        }
+    }
+
+    // Méthode pour sauvegarder les groupes dans Redis
+    async saveGroupsToRedis(parties: Party[]): Promise<void> {
+        try {
+            // Log des données à sauvegarder dans Redis
+            console.log('Données à sauvegarder dans Redis:', JSON.stringify(parties));
+
+            // Écriture dans Redis
+            await redisClient.set('party:1', JSON.stringify(parties));
+
+            // Confirmation de l'écriture réussie
+            console.log('Écriture dans Redis réussie pour party:1');
+        } catch (error) {
+            // Log en cas d'erreur
+            console.error('Erreur lors de l\'écriture des groupes dans Redis:', error);
+        }
+    }
+
+    async deleteGroupsFromRedis(): Promise<void> {
+        await redisClient.set('party:1', JSON.stringify([]));
+    }
+
+    async createOrUpdatePartiesToRedis(parties: Party[]): Promise<void> {
+        this.saveGroupsToRedis(parties);
     }
 
     // Filtrer les personnages par rôle
@@ -141,12 +172,18 @@ export class PartyService {
                         party.members.push(cacsToAdd);
                         usedCharacters.add(cacsToAdd.id);
                     }
+                    else {
+                        break;
+                    }
                 }
                 else if (!groupHasDIST) {
                     const distsToAdd = this.findCharacterDIST(cacs, dists, usedCharacters, party);
                     if (distsToAdd) {
                         party.members.push(distsToAdd);
                         usedCharacters.add(distsToAdd.id);
+                    }
+                    else {
+                        break;
                     }
                 }
                 else {
@@ -236,3 +273,5 @@ export class PartyService {
         });
     }
 }
+
+export const partyService = new PartyService();

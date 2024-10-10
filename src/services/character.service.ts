@@ -4,7 +4,7 @@ import { SpecializationDetails } from '../data/specializationsDetails.data.js';
 import { CharacterDto } from '../dto/character.dto.js';
 import { In } from 'typeorm';
 
-export class CharacterService {
+class CharacterService {
     async createCharacter(data: CharacterDto): Promise<Character> {
 
         const characterRepository = AppDataSource.getRepository(Character);
@@ -126,3 +126,5 @@ export class CharacterService {
         }
     }
 }
+
+export const characterService = new CharacterService();

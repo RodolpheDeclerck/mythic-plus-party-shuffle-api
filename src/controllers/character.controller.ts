@@ -1,14 +1,9 @@
 import { Request, Response } from 'express';
-import { CharacterService } from '../services/character.service.js';
 import { CharacterDto } from '../dto/character.dto.js';
 import { Specialization } from '../enums/specialization.enum.js';
+import { characterService } from '../services/character.service.js';
 
 class CharacterController {
-  private characterService: CharacterService;
-
-  constructor() {
-    this.characterService = new CharacterService();
-  }
 
   // Méthode pour créer un personnage
   async createCharacter(req: Request, res: Response): Promise<Response> {
@@ -21,7 +16,7 @@ class CharacterController {
       }
 
       // Create a new character instance
-      const newCharacter = await this.characterService.createCharacter(createCharacterDto);
+      const newCharacter = await characterService.createCharacter(createCharacterDto);
       return res.status(201).json(newCharacter);
     } catch (error: any) {
       console.error('Error creating character:', error);  // Log the error
@@ -35,7 +30,7 @@ class CharacterController {
   // Méthode pour obtenir tous les personnages
   async getAllCharacters(req: Request, res: Response): Promise<Response> {
     try {
-      const characters = await this.characterService.getAllCharacters();
+      const characters = await characterService.getAllCharacters();
       return res.json(characters);
     } catch (error: any) {
       console.error('Error getting characters:', error);  // Log the error
@@ -50,7 +45,7 @@ class CharacterController {
     const { id } = req.params; // Récupérer l'ID du personnage à supprimer
 
     try {
-      await this.characterService.deleteCharacter(parseInt(id));
+      await characterService.deleteCharacter(parseInt(id));
       return res.status(200).json({ message: 'Character deleted successfully' });
     } catch (error: any) {
       console.error('Error deleting character:', error);
@@ -62,7 +57,7 @@ class CharacterController {
     try {
       const { ids } = req.body;
 
-      await this.characterService.deleteCharacters(ids);
+      await characterService.deleteCharacters(ids);
 
       return res.status(200).json({ message: 'Characters deleted successfully' });
     } catch (error: any) {
@@ -74,7 +69,7 @@ class CharacterController {
     const { id } = req.params; // Récupérer l'ID du personnage
 
     try {
-      const character = await this.characterService.getCharacterById(parseInt(id));
+      const character = await characterService.getCharacterById(parseInt(id));
 
       if (!character) {
         return res.status(404).json({ message: 'Character not found' });
@@ -97,7 +92,7 @@ class CharacterController {
         return res.status(400).json({ message: 'Invalid specialization' });
       }
 
-      const updatedCharacter = await this.characterService.updateCharacter(parseInt(id), updateCharacterDto);
+      const updatedCharacter = await characterService.updateCharacter(parseInt(id), updateCharacterDto);
 
       if (!updatedCharacter) {
         return res.status(404).json({ message: 'Character not found' });
@@ -122,7 +117,7 @@ class CharacterController {
         return res.status(400).json({ message: 'Invalid specialization' });
       }
 
-      const updatedCharacter = await this.characterService.upsertCharacter(updateCharacterDto);
+      const updatedCharacter = await characterService.upsertCharacter(updateCharacterDto);
 
       if (!updatedCharacter) {
         return res.status(404).json({ message: 'Error upserting character' });
