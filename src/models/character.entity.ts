@@ -18,6 +18,9 @@ export class Character {
   @Column({ type: 'enum', enum: Specialization })
   specialization!: Specialization;
 
+  @Column()
+  iLevel!: number;
+
   @Column({ type: 'enum', enum: Role })
   role!: Role;
 
@@ -40,6 +43,7 @@ export class Character {
     }
     
     this.specialization = specialization;
+    this.iLevel = this.iLevel
     this.role = specializationInfo.role;
     this.bloodLust = specializationInfo.bloodLust;
     this.battleRez = specializationInfo.battleRez;

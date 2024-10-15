@@ -21,6 +21,7 @@ class CharacterService {
         }
 
         character.specialization = data.specialization;
+        character.iLevel = data.iLevel;
         character.role = specializationInfo.role;
         character.bloodLust = specializationInfo.bloodLust;
         character.battleRez = specializationInfo.battleRez;
@@ -97,6 +98,7 @@ class CharacterService {
         }
 
         character.specialization = data.specialization;
+        character.iLevel = data.iLevel;
         character.role = specializationInfo.role;
         character.bloodLust = specializationInfo.bloodLust;
         character.battleRez = specializationInfo.battleRez;

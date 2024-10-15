@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, isNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, isNumber, IsNumber } from 'class-validator';
 import { CharacterClass } from '../enums/characterClass.enum.js';
 import { Specialization } from '../enums/specialization.enum.js';
 
@@ -20,4 +20,8 @@ export class CharacterDto {
   @IsEnum(Specialization, { message: 'La spécialisation doit être une valeur valide' })
   @IsNotEmpty({ message: 'La spécialisation ne doit pas être vide' })
   specialization!: Specialization;
+
+  @IsNumber()
+  @IsNotEmpty({ message: 'iLevel ne doit pas etre vide'})
+  iLevel!: number;
 }
