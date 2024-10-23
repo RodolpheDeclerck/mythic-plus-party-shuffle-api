@@ -30,6 +30,7 @@ class CharacterController {
   // Méthode pour obtenir tous les personnages
   async getAllCharacters(req: Request, res: Response): Promise<Response> {
     try {
+      console.log('HERE: ', req.params);
       const characters = await characterService.getAllCharacters();
       return res.json(characters);
     } catch (error: any) {
