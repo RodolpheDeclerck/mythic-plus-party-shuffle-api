@@ -13,12 +13,18 @@ class AuthenticationController {
 
     // Envoyer le JWT dans un cookie sécurisé
     res.cookie('authToken', token, {
-      httpOnly: process.env.NODE_ENV === 'production', // Empêche l'accès au cookie depuis le client JavaScript (plus sécurisé)
+      httpOnly: true, // Empêche l'accès au cookie depuis le client JavaScript (plus sécurisé)
       secure: process.env.NODE_ENV === 'production', // En production, utiliser un cookie sécurisé (HTTPS)
       path: '/',
       domain: 'mythic-plus-party-shuffle.ca',
       sameSite: 'none',
       maxAge: 24 * 60 * 60 * 1000, // Expire dans 24 heures
+    });
+
+    // Renvoyer également le token dans le corps de la réponse (optionnel)
+    res.status(200).json({
+      message: 'Login successful',
+      token, // Inclure le token dans la réponse pour le stockage local si nécessaire
     });
   }
 
