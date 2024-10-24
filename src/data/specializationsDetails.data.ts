@@ -21,13 +21,13 @@ export const SpecializationDetails: { [key in Specialization]: { role: Role; blo
   
     // Paladin specializations
     [Specialization.Paladin_Holy]: { role: Role.Heal, bloodLust: false, battleRez: true },
-    [Specialization.Paladin_Protection]: { role: Role.Tank, bloodLust: false, battleRez: false },
-    [Specialization.Paladin_Retribution]: { role: Role.DPS_CAC, bloodLust: false, battleRez: false },
+    [Specialization.Paladin_Protection]: { role: Role.Tank, bloodLust: false, battleRez: true },
+    [Specialization.Paladin_Retribution]: { role: Role.DPS_CAC, bloodLust: false, battleRez: true },
   
     // Hunter specializations
     [Specialization.Hunter_BeastMastery]: { role: Role.DPS_DIST, bloodLust: true, battleRez: false },
-    [Specialization.Hunter_Marksmanship]: { role: Role.DPS_DIST, bloodLust: false, battleRez: false },
-    [Specialization.Hunter_Survival]: { role: Role.DPS_CAC, bloodLust: false, battleRez: false },
+    [Specialization.Hunter_Marksmanship]: { role: Role.DPS_DIST, bloodLust: true, battleRez: false },
+    [Specialization.Hunter_Survival]: { role: Role.DPS_CAC, bloodLust: true, battleRez: false },
   
     // Rogue specializations
     [Specialization.Rogue_Assassination]: { role: Role.DPS_CAC, bloodLust: false, battleRez: false },
