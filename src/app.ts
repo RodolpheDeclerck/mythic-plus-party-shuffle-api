@@ -22,11 +22,6 @@ app.use(cors({
   origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',
   methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true, // Envoie et reçoit les cookies
-  allowedHeaders: [
-    'Access-Control-Allow-Origin',
-    'Content-Type',
-    'Authorization'
-  ]
 }));
 
 app.use('/api', characterRoutes);
