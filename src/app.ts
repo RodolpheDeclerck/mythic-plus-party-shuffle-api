@@ -19,7 +19,7 @@ app.use(express.json());
 const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(cors({
-  origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',
+  origin: isProduction ? 'https://www.mythic-plus-party-shuffle.ca' : 'http://localhost:3000',
   methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true, // Envoie et reçoit les cookies
 }));
