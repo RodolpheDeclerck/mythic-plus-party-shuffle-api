@@ -1,36 +1,15 @@
 import { Request, Response } from 'express';
-import { Party } from '../models/party.entity.js';
+import { Party } from '../entities/party.entity.js';
 import { partyFacade } from '../facade/party.facade.js';
 import { partyService } from '../services/party.service.js';
+import e from 'cors';
 
 class PartyController {
 
-    async shuffleParties(req: Request): Promise<Party[]> {
-        try {
-            const parties = await partyFacade.shuffleAndSaveGroups();
-            return parties; // Retourne les parties mélangées
-        } catch (error: any) {
-            console.error('Error shuffling groups:', error);
-            throw new Error('An error occurred while shuffling groups');
-        }
-    }
-
-    async getParties(req: Request, res: Response): Promise<Response> {
-        try {
-            const parties = await partyService.getGroupsFromRedis();
-            return res.status(200).json(parties);
-        } catch (error: any) {
-            console.error('Error retrieving groups:', error);
-            return res.status(500).json({
-                message: 'An error occurred while retrieving groups',
-                error: error.message || error.toString(),
-            });
-        }
-    }
-
     async deleteParties(req: Request, res: Response): Promise<Response> {
         try {
-            await partyService.deleteGroupsFromRedis();
+            const { eventCode } = req.params;
+            await partyService.deleteGroupsFromRedis(eventCode);
             return res.status(200).json({ message: 'Parties deleted successfully' });
         } catch (error: any) {
             console.error('Error deleting groups:', error);
@@ -44,7 +23,8 @@ class PartyController {
     async createOrUpdateParties(req: Request, res: Response): Promise<Response> {
         try {
             const parties: Party[] = req.body;
-            await partyService.createOrUpdatePartiesToRedis(parties);
+            const { eventCode } = req.params;
+            await partyService.createOrUpdatePartiesToRedis(parties, eventCode);
             return res.status(200).json({ message: 'Parties created or updated successfully' });
         } catch (error: any) {
             console.error('Error creating or updating groups:', error);

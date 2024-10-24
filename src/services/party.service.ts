@@ -1,7 +1,6 @@
-import { Character } from '../models/character.entity.js';
+import { Character } from '../entities/character.entity.js';
 import { SpecializationDetails } from '../data/specializationsDetails.data.js';
-import { Party } from '../models/party.entity.js';
-import { CharacterClass } from '../enums/characterClass.enum.js';
+import { Party } from '../entities/party.entity.js';
 import redisClient from '../config/redis-client.js';
 
 class PartyService {
@@ -51,40 +50,42 @@ class PartyService {
     }
 
     // Méthode pour récupérer les groupes à partir de Redis
-    async getGroupsFromRedis(): Promise<Party[]> {
-        const redisKey = 'party:1';
+    async getPartiesByEventCode(eventCode: string): Promise<Party[]> {
+        const redisKey = 'party:' + eventCode;
         const partiesJson = await redisClient.get(redisKey);
 
-        if (partiesJson) {
-            return JSON.parse(partiesJson);
-        } else {
-            throw new Error('No parties found in Redis');
+        if (!partiesJson) {
+            return [];
         }
+        
+        return JSON.parse(partiesJson);
+
     }
 
     // Méthode pour sauvegarder les groupes dans Redis
-    async saveGroupsToRedis(parties: Party[]): Promise<void> {
+    async saveGroupsToRedis(parties: Party[], eventCode: string): Promise<void> {
         try {
             // Log des données à sauvegarder dans Redis
             console.log('Données à sauvegarder dans Redis:', JSON.stringify(parties));
 
             // Écriture dans Redis
-            await redisClient.set('party:1', JSON.stringify(parties));
+            await redisClient.set('party:' + eventCode, JSON.stringify(parties));
 
             // Confirmation de l'écriture réussie
-            console.log('Écriture dans Redis réussie pour party:1');
+            console.log('Écriture dans Redis réussie pour party:' + eventCode);
         } catch (error) {
             // Log en cas d'erreur
             console.error('Erreur lors de l\'écriture des groupes dans Redis:', error);
         }
     }
 
-    async deleteGroupsFromRedis(): Promise<void> {
-        await redisClient.set('party:1', JSON.stringify([]));
+
+    async deleteGroupsFromRedis(eventCode: string): Promise<void> {
+        await redisClient.set('party:' + eventCode, JSON.stringify([]));
     }
 
-    async createOrUpdatePartiesToRedis(parties: Party[]): Promise<void> {
-        this.saveGroupsToRedis(parties);
+    async createOrUpdatePartiesToRedis(parties: Party[], eventCode: string): Promise<void> {
+        this.saveGroupsToRedis(parties, eventCode);
     }
 
     // Filtrer les personnages par rôle
@@ -309,78 +310,6 @@ class PartyService {
         });
     }
 
-
-    private findCharacterWithBL(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
-        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
-        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
-        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].bloodLust && (!avoidSameClass || !partyClasses.has(char.characterClass)));
-    }
-
-    private findCharacterWithBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
-        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
-        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
-        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].battleRez && (!avoidSameClass || !partyClasses.has(char.characterClass)));
-    }
-
-    private findCharacterWithBLOrBR(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
-        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
-        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
-        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].bloodLust && (!avoidSameClass || !partyClasses.has(char.characterClass)));
-    }
-
-    private findCharacterCAC(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
-        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
-        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
-        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].role === 'CAC' && (!avoidSameClass || !partyClasses.has(char.characterClass)));
-    }
-
-    private findCharacterDIST(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
-        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
-        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
-        return shuffleArray(unusedCharPool).find(char => SpecializationDetails[char.specialization].role === 'DIST' && (!avoidSameClass || !partyClasses.has(char.characterClass)));
-    }
-
-    private findRandomDPS(cacs: Character[], dists: Character[], usedCharacters: Set<number>, party: Party): Character | undefined {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        const partyClasses = new Set(party.members.map(member => member.characterClass));  // Classes des membres du party
-        const unusedCharPool = [...cacs, ...dists].filter(char => !usedCharacters.has(char.id)); // Filtrer les personnages non utilisés dans le charPool
-        const avoidSameClass = this.shouldAvoidSameClass(partyClasses, unusedCharPool);
-        return shuffleArray(unusedCharPool).find(char => !usedCharacters.has(char.id) && (!avoidSameClass || !partyClasses.has(char.characterClass)));
-    }
-
-    private shouldAvoidSameClass(partyClasses: Set<CharacterClass>, unusedCharPool: Character[]): boolean {
-
-        // Vérifier s'il y a un personnage inutilisé avec une classe déjà présente dans party
-        const hasSameClassInPool = unusedCharPool.some(char => partyClasses.has(char.characterClass));
-
-        // Vérifier s'il y a un personnage inutilisé avec une classe non présente dans party
-        const hasNewClassInPool = unusedCharPool.some(char => !partyClasses.has(char.characterClass));
-
-        // Retourner true si les deux conditions sont remplies
-        return hasSameClassInPool && hasNewClassInPool;
-    }
-
-    // Étape 4 : Créer un groupe pour chaque HEAL restant
-    private assignRemainingHealersToNewParties(parties: Party[], healers: Character[], usedCharacters: Set<number>) {
-        healers.forEach(heal => {
-            if (!usedCharacters.has(heal.id)) {
-                const newParty = new Party();
-                newParty.members = [heal];
-                parties.push(newParty);
-                usedCharacters.add(heal.id);
-            }
-        });
-    }
 }
 
 export const partyService = new PartyService();

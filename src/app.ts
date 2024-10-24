@@ -5,8 +5,15 @@ import { Server } from 'socket.io';
 import characterRoutes from './routes/character.routes.js';
 import metadataRoutes from './routes/metadata.routes.js';
 import partyRoutes from './routes/party.routes.js';
+import authenticationRoutes from './routes/authentication.routes.js';
+import userRoutes from './routes/user.routes.js';
+import eventRoutes from './routes/event.routes.js';
+import cookieParser from 'cookie-parser';
 
 const app = express();
+
+app.use(cookieParser()); // Ajoute le middleware pour lire les cookies
+
 app.use(express.json());
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -14,11 +21,15 @@ const isProduction = process.env.NODE_ENV === 'production';
 app.use(cors({
   origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Spécifiez les méthodes HTTP autorisées
+  credentials: true, // Envoie et reçoit les cookies
 }));
 
 app.use('/api', characterRoutes);
 app.use('/api', partyRoutes);
 app.use('/api', metadataRoutes);
+app.use('/api', userRoutes);
+app.use('/api', eventRoutes);
+app.use('/auth', authenticationRoutes);
 
 const httpServer = createServer(app);
 

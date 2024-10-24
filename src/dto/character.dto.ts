@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsEnum, isNumber, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsNumber } from 'class-validator';
 import { CharacterClass } from '../enums/characterClass.enum.js';
 import { Specialization } from '../enums/specialization.enum.js';
 
@@ -22,6 +22,9 @@ export class CharacterDto {
   specialization!: Specialization;
 
   @IsNumber()
-  @IsNotEmpty({ message: 'iLevel ne doit pas etre vide'})
+  @IsNotEmpty({ message: 'iLevel ne doit pas etre vide' })
   iLevel!: number;
+
+  @IsNumber()
+  eventCode!: string;
 }

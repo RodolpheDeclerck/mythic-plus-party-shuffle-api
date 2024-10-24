@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { AppEvent as Event } from './event.entity.js';
 import { CharacterClass } from '../enums/characterClass.enum.js';
 import { Role } from '../enums/role.enum.js';
 import { Specialization } from '../enums/specialization.enum.js';
@@ -30,24 +31,27 @@ export class Character {
   @Column({ default: false })
   battleRez!: boolean;
 
+  // Ajout de la relation avec l'entité Event
+  @ManyToOne(() => Event, event => event.characters, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: "eventCode", referencedColumnName: "code" })
+  event!: Event;
+
   constructor(name?: string, characterClass?: CharacterClass, specialization?: Specialization) {
     if (name && characterClass && specialization) {
+      this.name = name;
+      this.characterClass = characterClass;
 
-    this.name = name;
-    this.characterClass = characterClass;
+      const specializationInfo = SpecializationDetails[specialization];
 
-    const specializationInfo = SpecializationDetails[specialization];
+      if (!specializationInfo) {
+        throw new Error(`Invalid specialization: ${specialization}`);
+      }
 
-    if (!specializationInfo) {
-      throw new Error(`Invalid specialization: ${specialization}`);
+      this.specialization = specialization;
+      this.iLevel = this.iLevel;
+      this.role = specializationInfo.role;
+      this.bloodLust = specializationInfo.bloodLust;
+      this.battleRez = specializationInfo.battleRez;
     }
-    
-    this.specialization = specialization;
-    this.iLevel = this.iLevel
-    this.role = specializationInfo.role;
-    this.bloodLust = specializationInfo.bloodLust;
-    this.battleRez = specializationInfo.battleRez;
-   }
   }
-
 }

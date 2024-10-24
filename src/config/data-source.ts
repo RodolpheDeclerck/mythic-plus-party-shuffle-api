@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
-import { Character } from '../models/character.entity.js';
-import { Party } from '../models/party.entity.js';
+import { Character } from '../entities/character.entity.js';
+import { Party } from '../entities/party.entity.js';
+import { User } from '../entities/user.entity.js';
+import { AppEvent as Event } from '../entities/event.entity.js';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -16,7 +18,7 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB,
   synchronize: true,
   logging: true,
-  entities: [Character, Party],
+  entities: [Character, Party, User, Event],
   migrations: [],
   subscribers: [],
 });

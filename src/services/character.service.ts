@@ -1,13 +1,26 @@
 import { AppDataSource } from '../config/data-source.js';
-import { Character } from '../models/character.entity.js';
+import { Character } from '../entities/character.entity.js';
 import { SpecializationDetails } from '../data/specializationsDetails.data.js';
 import { CharacterDto } from '../dto/character.dto.js';
 import { In } from 'typeorm';
+import { AppEvent as Event } from '../entities/event.entity.js';
 
 class CharacterService {
     async createCharacter(data: CharacterDto): Promise<Character> {
 
         const characterRepository = AppDataSource.getRepository(Character);
+        const eventRepository = AppDataSource.getRepository(Event);
+
+        console.log('data:', data);
+
+        console.log('Event code being searched:', data.eventCode);
+
+        // Récupérer l'événement auquel le personnage sera associé
+        const event = await eventRepository.findOne({ where: { code: data.eventCode } });
+
+        if (!event) {
+            throw new Error('Event not found');
+        }
 
         // Créer une nouvelle instance de personnage
         const character = new Character();
@@ -25,6 +38,7 @@ class CharacterService {
         character.role = specializationInfo.role;
         character.bloodLust = specializationInfo.bloodLust;
         character.battleRez = specializationInfo.battleRez;
+        character.event = event;
 
         // Sauvegarder le personnage dans la base de données
         await characterRepository.save(character);
@@ -86,7 +100,7 @@ class CharacterService {
             throw new Error(`Character with ID ${id} not found`);
         }
 
-        // Mettre à jour les propriétés
+        // Mettre à jour les propriétés sauf l'événement
         character.name = data.name;
         character.characterClass = data.characterClass;
 
@@ -102,6 +116,8 @@ class CharacterService {
         character.role = specializationInfo.role;
         character.bloodLust = specializationInfo.bloodLust;
         character.battleRez = specializationInfo.battleRez;
+
+        // Suppression de toute référence à `event`
 
         // Sauvegarder les modifications
         await characterRepository.save(character);
