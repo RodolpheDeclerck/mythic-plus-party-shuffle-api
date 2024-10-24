@@ -13,9 +13,8 @@ class AuthenticationController {
 
     // Envoyer le JWT dans un cookie sécurisé
     res.cookie('authToken', token, {
-      httpOnly: process.env.NODE_ENV === 'production' ? true :  false, // Empêche l'accès au cookie depuis le client JavaScript (plus sécurisé)
+      httpOnly: process.env.NODE_ENV === 'production', // Empêche l'accès au cookie depuis le client JavaScript (plus sécurisé)
       secure: process.env.NODE_ENV === 'production', // En production, utiliser un cookie sécurisé (HTTPS)
-      domain: process.env.NODE_ENV === 'production' ? 'mythic-plus-party-shuffle.onrender.com' : 'localhost', // Modifier le domaine en production
       path: '/',
       sameSite: 'none',
       maxAge: 24 * 60 * 60 * 1000, // Expire dans 24 heures

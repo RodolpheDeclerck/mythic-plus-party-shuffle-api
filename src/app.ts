@@ -20,8 +20,13 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(cors({
   origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Spécifiez les méthodes HTTP autorisées
+  methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true, // Envoie et reçoit les cookies
+  allowedHeaders: [
+    'Access-Control-Allow-Origin',
+    'Content-Type',
+    'Authorization'
+  ]
 }));
 
 app.use('/api', characterRoutes);
