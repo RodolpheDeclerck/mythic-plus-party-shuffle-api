@@ -16,6 +16,7 @@ class AuthenticationController {
       httpOnly: false, // Empêche l'accès au cookie depuis le client JavaScript (plus sécurisé)
       secure: process.env.NODE_ENV === 'production', // En production, utiliser un cookie sécurisé (HTTPS)
       path: '/',
+      domain: 'mythic-plus-party-shuffle.ca',
       sameSite: 'none',
       maxAge: 24 * 60 * 60 * 1000, // Expire dans 24 heures
     });
