@@ -11,13 +11,14 @@ class AuthenticationController {
   private generateAndSendToken(res: Response, user: any) {
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
     const isProduction = process.env.NODE_ENV === 'production'
+    const domain = process.env.DOMAIN || 'localhost';
 
     // Envoyer le JWT dans un cookie sécurisé
     res.cookie('authToken', token, {
       httpOnly: true, // Empêche l'accès au cookie depuis le client JavaScript (plus sécurisé)
       secure: isProduction, // En production, utiliser un cookie sécurisé (HTTPS)
       path: '/',
-      domain: isProduction ? 'mythic-plus-party-shuffle.ca' : 'localhost',
+      domain,
       sameSite: isProduction ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // Expire dans 24 heures
     });
@@ -132,9 +133,11 @@ class AuthenticationController {
   }
 
   async logout(req: Request, res: Response) {
+    const domain = process.env.DOMAIN || 'localhost';
+
     res.clearCookie('authToken', {
       path: '/',
-      domain: process.env.NODE_ENV === 'production' ? 'mythic-plus-party-shuffle.ca' : 'localhost'
+      domain
     });
     res.status(200).json({ message: 'Déconnexion réussie' });
   }
