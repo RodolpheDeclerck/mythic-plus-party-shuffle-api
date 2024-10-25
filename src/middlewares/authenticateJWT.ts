@@ -5,7 +5,7 @@ import { AppEvent } from '../entities/event.entity.js';
 import { AppDataSource } from '../config/data-source.js';
 
 // Clé secrète pour vérifier le JWT (utilise une variable d'environnement pour plus de sécurité)
-const JWT_SECRET = 'yourSecretKey';
+const JWT_SECRET = process.env.JWT_SECRET || 'yourSecretKey'; // Utilise une variable d'environnement pour la clé secrète
 
 export const isOwner = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     try {
@@ -34,7 +34,7 @@ export const isAuthenticated = async (req: express.Request, res: express.Respons
         console.log('Cookies:', req.cookies);
 
         // Récupère le token JWT dans le cookie
-        const token = req.cookies?.authToken;
+        const token = req.cookies?.session;
 
         if (!token) {
             return res.status(403).json({ message: 'Authentication token missing' });

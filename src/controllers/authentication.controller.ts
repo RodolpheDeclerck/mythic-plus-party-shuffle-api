@@ -4,6 +4,7 @@ import { authentication, random } from '../helpers/index.js';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yourSecretKey'; // Utilise une variable d'environnement pour la clé secrète
+const tokenName = 'session';
 
 class AuthenticationController {
 
@@ -14,7 +15,7 @@ class AuthenticationController {
     const domain = process.env.DOMAIN || 'localhost';
 
     // Envoyer le JWT dans un cookie sécurisé
-    res.cookie('authToken', token, {
+    res.cookie(tokenName, token, {
       httpOnly: true, // Empêche l'accès au cookie depuis le client JavaScript (plus sécurisé)
       secure: isProduction, // En production, utiliser un cookie sécurisé (HTTPS)
       path: '/',
@@ -110,7 +111,7 @@ class AuthenticationController {
 
   async verifyToken(req: Request, res: Response) {
     try {
-      const token = req.body.token || req.cookies?.authToken || req.headers.authorization?.split(' ')[1];
+      const token = req.body.token || req.cookies?.session || req.headers.authorization?.split(' ')[1];
 
       if (!token) {
         return res.status(400).json({ message: 'Token manquant', isAuthenticated: false });
@@ -135,7 +136,7 @@ class AuthenticationController {
   async logout(req: Request, res: Response) {
     const domain = process.env.DOMAIN || 'localhost';
 
-    res.clearCookie('authToken', {
+    res.clearCookie(tokenName, {
       path: '/',
       domain
     });
