@@ -10,21 +10,16 @@ class AuthenticationController {
   // Méthode utilitaire pour générer et envoyer le JWT dans un cookie
   private generateAndSendToken(res: Response, user: any) {
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+    const isProduction = process.env.NODE_ENV === 'production'
 
     // Envoyer le JWT dans un cookie sécurisé
     res.cookie('authToken', token, {
       httpOnly: true, // Empêche l'accès au cookie depuis le client JavaScript (plus sécurisé)
-      secure: process.env.NODE_ENV === 'production', // En production, utiliser un cookie sécurisé (HTTPS)
+      secure: isProduction, // En production, utiliser un cookie sécurisé (HTTPS)
       path: '/',
-      domain: 'mythic-plus-party-shuffle.ca',
-      sameSite: 'none',
+      domain: isProduction ? 'mythic-plus-party-shuffle.ca' : 'localhost',
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // Expire dans 24 heures
-    });
-
-    // Renvoyer également le token dans le corps de la réponse (optionnel)
-    res.status(200).json({
-      message: 'Login successful',
-      token, // Inclure le token dans la réponse pour le stockage local si nécessaire
     });
   }
 
@@ -111,6 +106,39 @@ class AuthenticationController {
       return this.handleError(res, 'Error during registration', error);
     }
   }
+
+  async verifyToken(req: Request, res: Response) {
+    try {
+      const token = req.body.token || req.cookies?.authToken || req.headers.authorization?.split(' ')[1];
+
+      if (!token) {
+        return res.status(400).json({ message: 'Token manquant', isAuthenticated: false });
+      }
+
+      jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
+        if (err) {
+          return res.status(401).json({ message: 'Token invalide ou expiré', isAuthenticated: false });
+        }
+
+        res.status(200).json({
+          message: 'Token valide',
+          isAuthenticated: true,  // Ajoute l'état d'authentification
+          user: decoded
+        });
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Erreur serveur lors de la vérification du token', isAuthenticated: false });
+    }
+  }
+
+  async logout(req: Request, res: Response) {
+    res.clearCookie('authToken', {
+      path: '/',
+      domain: process.env.NODE_ENV === 'production' ? 'mythic-plus-party-shuffle.ca' : 'localhost'
+    });
+    res.status(200).json({ message: 'Déconnexion réussie' });
+  }
+
 }
 
 export default new AuthenticationController();
