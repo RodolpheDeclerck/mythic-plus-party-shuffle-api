@@ -16,10 +16,8 @@ app.use(cookieParser()); // Ajoute le middleware pour lire les cookies
 
 app.use(express.json());
 
-const isProduction = process.env.NODE_ENV === 'production';
-
 app.use(cors({
-  origin: isProduction ? 'https://www.mythic-plus-party-shuffle.ca' : 'http://localhost:3000',
+  origin: process.env.CORS_ORIGIN,
   methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true, // Envoie et reçoit les cookies
 }));
@@ -35,7 +33,7 @@ const httpServer = createServer(app);
 
 export const io = new Server(httpServer, {
   cors: {
-    origin: isProduction ? 'https://mythic-plus-party-shuffle.onrender.com' : 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Spécifiez les méthodes HTTP autorisées
   },
 });
