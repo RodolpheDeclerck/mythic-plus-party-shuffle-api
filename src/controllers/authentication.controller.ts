@@ -3,16 +3,21 @@ import { getUserByEmail, createUser, updateUserById } from '../services/user.ser
 import { authentication, random } from '../helpers/index.js';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'yourSecretKey'; // Utilise une variable d'environnement pour la clé secrète
+const JWT_SECRET = process.env.JWT_SECRET; // Utilise une variable d'environnement pour la clé secrète
 const tokenName = 'session';
+const isProduction = process.env.NODE_ENV === 'production'
+const domain = process.env.DOMAIN || 'localhost';
 
 class AuthenticationController {
 
   // Méthode utilitaire pour générer et envoyer le JWT dans un cookie
   private generateAndSendToken(res: Response, user: any) {
+
+    if (!JWT_SECRET) {
+      throw new Error('JWT_SECRET is not defined in the environment variables');
+    }
+
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
-    const isProduction = process.env.NODE_ENV === 'production'
-    const domain = process.env.DOMAIN || 'localhost';
 
     // Envoyer le JWT dans un cookie sécurisé
     res.cookie(tokenName, token, {
@@ -111,6 +116,11 @@ class AuthenticationController {
 
   async verifyToken(req: Request, res: Response) {
     try {
+
+      if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET is not defined in the environment variables');
+      }
+
       const token = req.body.token || req.cookies?.session || req.headers.authorization?.split(' ')[1];
 
       if (!token) {
@@ -134,7 +144,6 @@ class AuthenticationController {
   }
 
   async logout(req: Request, res: Response) {
-    const domain = process.env.DOMAIN || 'localhost';
 
     res.clearCookie(tokenName, {
       path: '/',
