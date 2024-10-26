@@ -1,8 +1,15 @@
-// index.ts
-import { AppDataSource } from './config/data-source.js';  // Import relatif
-import httpServer from './app.js';  // Assurez-vous que httpServer est exporté de app.ts
+import dotenvSafe from 'dotenv-safe';
 
-const PORT = parseInt(process.env.PORT || '8080', 10);  // Convertir en nombre
+dotenvSafe.config({
+  allowEmptyValues: false, // Empêche les valeurs vides
+  example: '.env.example', // Chemin vers le fichier d'exemple
+  path: '.env',            // Chemin vers votre fichier .env
+});
+
+import { AppDataSource } from './config/data-source.js'; // Import après la configuration dotenv-safe
+import httpServer from './app.js';
+
+const PORT = parseInt(process.env.PORT || '8080', 10); // Convertir en nombre
 
 // Initialize the database
 AppDataSource.initialize()
@@ -10,7 +17,7 @@ AppDataSource.initialize()
     console.log('Data Source has been initialized!');
 
     // Start the server
-    httpServer.listen(PORT, () => {  // Démarrer le serveur HTTP avec Socket.IO
+    httpServer.listen(PORT, () => {
       console.log(`Server is running at http://localhost:${PORT}`);
     });
   })
