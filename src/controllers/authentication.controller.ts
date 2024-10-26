@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET; // Utilise une variable d'environnement pour la clé secrète
 const tokenName = 'session';
 const isProduction = process.env.NODE_ENV === 'production'
-const domain = process.env.DOMAIN || 'localhost';
+const domain = process.env.DOMAIN;
 
 class AuthenticationController {
 
