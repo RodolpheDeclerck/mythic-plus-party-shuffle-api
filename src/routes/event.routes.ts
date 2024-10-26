@@ -29,7 +29,7 @@ router.get('/events/:eventId', (req, res) => eventController.getCharacters(req, 
 
 router.get('/event', (req, res) => eventController.getEventByCode(req, res));
 
-router.delete('/events/:eventCode', isAuthenticated,isAdminOfEvent, async (req, res) => {
+router.delete('/events/:eventCode', isAuthenticated, isAdminOfEvent, async (req, res) => {
   try {
       await eventController.deleteEvent(req, res);
       io.emit('event-updated');  // Émettre un événement lorsque l'événement est supprimé
