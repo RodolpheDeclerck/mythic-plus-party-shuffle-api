@@ -57,11 +57,14 @@ class CharacterService {
 
         const character = await characterRepository.findOneBy({ id });
 
+
         if (!character) {
             throw new Error(`Character with ID ${id} not found`);
         }
 
-        await characterRepository.remove(character);
+        character.event = null;
+
+        await characterRepository.save(character);
     }
 
     async updateCharactersEventToNull(ids: number[]): Promise<void> {
