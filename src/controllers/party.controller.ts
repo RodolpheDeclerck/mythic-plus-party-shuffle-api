@@ -24,6 +24,7 @@ class PartyController {
         try {
             const parties: Party[] = req.body;
             const { eventCode } = req.params;
+            console.log("createOrUpdateParties");
             await partyService.createOrUpdatePartiesToRedis(parties, eventCode);
             return res.status(200).json({ message: 'Parties created or updated successfully' });
         } catch (error: any) {

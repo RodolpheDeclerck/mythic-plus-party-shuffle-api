@@ -60,7 +60,7 @@ export class AppEvent {
     @BeforeInsert()
     setEventDetails() {
         // Génère un code unique pour l'événement
-        this.code = uuidv4();
+        this.code = uuidv4().substring(0, 8);
 
         // Définit la date d'expiration 7 jours après la date de création
         const expireDate = new Date();

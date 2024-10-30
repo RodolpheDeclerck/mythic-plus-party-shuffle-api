@@ -4,10 +4,13 @@ import { Party } from '../entities/party.entity.js';
 import redisClient from '../config/redis-client.js';
 
 class PartyService {
+    private shuffleHistoryKey = 'partyShuffleHistory';
 
     // Fonction principale pour mélanger les groupes
-    async shuffleGroups(characters: Character[]): Promise<Party[]> {
+    async shuffleGroups(characters: Character[], eventCode: string): Promise<Party[]> {
         const parties: Party[] = [];
+
+        const partiesHistory = await this.getLastThreeShuffles(eventCode);
 
         const usedCharacters = new Set<number>(); // Pour éviter les doublons
 
@@ -21,17 +24,15 @@ class PartyService {
         this.createPartiesForHealers(healers, parties, usedCharacters);
 
         //Add a Battle rez from random role to the party if needed
-        this.assignBRToParties(brs, parties, usedCharacters);
+        this.assignBRToParties(brs, parties, usedCharacters, partiesHistory);
 
         //Add a Blood Lust to the group
-        this.assignBLToParties(bls, parties, usedCharacters);
-
+        this.assignBLToParties(bls, parties, usedCharacters, partiesHistory);
 
         //Add healer to all parties without healer
-        this.assignHealersToParties(parties, healers, usedCharacters);
+        this.assignHealersToParties(parties, healers, usedCharacters, partiesHistory);
 
-        this.addignDistAndMelees(dists, melees, parties, usedCharacters);
-
+        this.addignDistAndMelees(dists, melees, parties, usedCharacters, partiesHistory);
 
 
         let unusedDps: Character[] = [];
@@ -49,6 +50,44 @@ class PartyService {
         return parties;
     }
 
+    // Charger les trois derniers shuffles depuis Redis
+    async getLastThreeShuffles(eventCode: string): Promise<Party[][]> {
+        const partiesJson = await redisClient.get(`${this.shuffleHistoryKey}:${eventCode}`);
+        return partiesJson ? JSON.parse(partiesJson).slice(-3) : [];
+    }
+
+    // Sauvegarder le shuffle actuel dans l'historique Redis
+    async saveShuffleToHistory(eventCode: string, parties: Party[]): Promise<void> {
+        const history = await this.getLastThreeShuffles(eventCode);
+        history.push(parties); // Ajouter le nouveau shuffle
+
+        if (history.length > 3) history.shift(); // Limiter à trois shuffles
+
+        await redisClient.set(`${this.shuffleHistoryKey}:${eventCode}`, JSON.stringify(history));
+    }
+
+
+    private filterEligibleMembers(
+        candidates: Character[],
+        party: Party,
+        previousShuffles: Party[][]
+    ): Character[] {
+        const groupMembers = party.members.map(member => member.id);
+
+        return candidates.filter(candidate => {
+            // Vérifie si le candidat a été dans le même groupe que l'un des membres actuels du party
+            const hasBeenGrouped = previousShuffles.some(shuffle =>
+                shuffle.some(group =>
+                    group.members.some(member => groupMembers.includes(member.id)) &&
+                    group.members.some(member => member.id === candidate.id)
+                )
+            );
+
+            // Retourne true si le candidat n'a pas été groupé avec les membres du party dans l'historique
+            return !hasBeenGrouped;
+        });
+    }
+
     // Méthode pour récupérer les groupes à partir de Redis
     async getPartiesByEventCode(eventCode: string): Promise<Party[]> {
         const redisKey = 'party:' + eventCode;
@@ -57,7 +96,7 @@ class PartyService {
         if (!partiesJson) {
             return [];
         }
-        
+
         return JSON.parse(partiesJson);
 
     }
@@ -85,8 +124,24 @@ class PartyService {
     }
 
     async createOrUpdatePartiesToRedis(parties: Party[], eventCode: string): Promise<void> {
+        // Charger l'historique des trois derniers shuffles
+        const history = await this.getLastThreeShuffles(eventCode);
+
+        if (history.length > 0) {
+            // Remplacer le dernier élément de l'historique par le nouveau `parties`
+            history[history.length - 1] = parties;
+        } else {
+            // Si l'historique est vide, ajouter `parties` comme première entrée
+            history.push(parties);
+        }
+
+        // Sauvegarder l'historique mis à jour dans Redis
+        await redisClient.set(`${this.shuffleHistoryKey}:${eventCode}`, JSON.stringify(history));
+
         this.saveGroupsToRedis(parties, eventCode);
+
     }
+
 
     // Filtrer les personnages par rôle
     private filterCharactersByRole(characters: Character[]) {
@@ -130,7 +185,7 @@ class PartyService {
         }
     }
 
-    private assignBRToParties(brs: Character[], parties: Party[], usedCharacters: Set<number>) {
+    private assignBRToParties(brs: Character[], parties: Party[], usedCharacters: Set<number>, partiesHistory: Party[][]) {
         //Pull of role to pick randomly
         let roles = ['HEAL', 'DIST', 'CAC'];
 
@@ -157,7 +212,10 @@ class PartyService {
                     const referenceILevel = party.members[0].iLevel;
 
                     // Filtrer les brs qui respectent les conditions de rôle et ne sont pas utilisés
-                    const availableBrs = brs.filter(br => br.role === randomRole && !usedCharacters.has(br.id));
+                    let availableBrs = brs.filter(br => br.role === randomRole && !usedCharacters.has(br.id));
+
+                    let filteredBrs = this.filterEligibleMembers(availableBrs, party, partiesHistory);
+                    availableBrs = filteredBrs.length > 0 ? filteredBrs : availableBrs;
 
                     // Trouver celui dont l'iLevel est le plus proche de referenceILevel
                     brToAdd = availableBrs.reduce((closestBr, currentBr) => {
@@ -187,7 +245,7 @@ class PartyService {
 
     }
 
-    private assignBLToParties(bls: Character[], parties: Party[], usedCharacters: Set<number>) {
+    private assignBLToParties(bls: Character[], parties: Party[], usedCharacters: Set<number>, partiesHistory: Party[][]) {
         //Pull of role to pick randomly
         let roles = ['HEAL', 'DIST', 'CAC'];
 
@@ -206,7 +264,10 @@ class PartyService {
                 const referenceILevel = party.members[0].iLevel;
 
                 // Filtrer les brs qui respectent les conditions de rôle et ne sont pas utilisés
-                const availableBls = bls.filter(bl => bl.role === randomRole && !usedCharacters.has(bl.id));
+                let availableBls = bls.filter(bl => bl.role === randomRole && !usedCharacters.has(bl.id));
+
+                let filteredBrs = this.filterEligibleMembers(availableBls, party, partiesHistory);
+                availableBls = filteredBrs.length > 0 ? filteredBrs : availableBls;
 
                 // Trouver celui dont l'iLevel est le plus proche de referenceILevel
                 blToAdd = availableBls.reduce((closestBl, currentBl) => {
@@ -234,14 +295,17 @@ class PartyService {
 
 
     // Étape 2 : Ajouter un HEAL dans chaque groupe
-    private assignHealersToParties(parties: Party[], healers: Character[], usedCharacters: Set<number>) {
+    private assignHealersToParties(parties: Party[], healers: Character[], usedCharacters: Set<number>, partiesHistory: Party[][]) {
         parties.forEach(party => {
             // Si le groupe n'a pas encore de HEAL
             if (!party.members.find(member => member.role === 'HEAL')) {
                 const partyIlevel = party.members[0].iLevel; // On prend l'ilevel du premier membre du groupe
 
                 // Filtrer les soigneurs qui ne sont pas déjà utilisés
-                const availableHealers = healers.filter(healer => !usedCharacters.has(healer.id));
+                let availableHealers = healers.filter(healer => !usedCharacters.has(healer.id));
+
+                let filteredBrs = this.filterEligibleMembers(availableHealers, party, partiesHistory);
+                availableHealers = filteredBrs.length > 0 ? filteredBrs : availableHealers;
 
                 if (availableHealers.length > 0) {
                     // On cherche le soigneur avec l'ilevel le plus proche
@@ -261,8 +325,15 @@ class PartyService {
         });
     }
 
-    private addignDistAndMelees(dists: Character[], melees: Character[], parties: Party[], usedCharacters: Set<number>) {
+    private addignDistAndMelees(dists: Character[], melees: Character[], parties: Party[], usedCharacters: Set<number>, partiesHistory: Party[][]) {
         parties.forEach(party => {
+
+            let filteredMelees = this.filterEligibleMembers(melees, party, partiesHistory);
+            melees = filteredMelees.find(fm => !usedCharacters.has(fm.id)) ? filteredMelees : melees;
+
+            let filteredDists = this.filterEligibleMembers(dists, party, partiesHistory);
+            dists = filteredDists.find(fm => !usedCharacters.has(fm.id)) ? filteredDists : dists;
+
             if (!party.members.find(member => member.role === 'CAC')) {
                 const meleeToAdd = melees.find(melee => !usedCharacters.has(melee.id))
                 if (meleeToAdd) {
