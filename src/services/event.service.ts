@@ -50,10 +50,12 @@ class EventService {
     async getEventByCode(code: string): Promise<Event | null> {
         const eventRepository = AppDataSource.getRepository(Event);
 
-        // Cherche l'événement par son ID
+        // Recherche de l'événement par son code
         const event = await eventRepository.findOne({ where: { code } });
 
-        return event || null;  // Retourne null si l'événement n'est pas trouvé
+        console.log("Event trouvé:", event); // Log pour vérifier le retour de findOne
+
+        return event || null; // Retourne null si aucun événement n'est trouvé
     }
 
     // Mettre à jour un événement

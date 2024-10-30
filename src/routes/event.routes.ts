@@ -5,6 +5,8 @@ import { isAdminOfEvent, isAuthenticated } from '../middlewares/authenticateJWT.
 
 const router = Router();
 
+router.get('/events', (req, res) => eventController.getEventByCode(req, res));
+
 // POST request to create a new event
 router.post('/events', isAuthenticated, async (req, res) => {
   try {
@@ -26,8 +28,6 @@ router.get('/events', (req, res) => eventController.getAllEvents(req, res));
 router.get('/events/:eventCode/characters', (req, res) => eventController.getCharacters(req, res));
 
 router.get('/events/:eventId', (req, res) => eventController.getCharacters(req, res));
-
-router.get('/event', (req, res) => eventController.getEventByCode(req, res));
 
 router.delete('/events/:eventCode', isAuthenticated, isAdminOfEvent, async (req, res) => {
   try {
