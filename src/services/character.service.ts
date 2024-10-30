@@ -64,10 +64,10 @@ class CharacterService {
         await characterRepository.remove(character);
     }
 
-    async deleteCharacters(ids: number[]): Promise<void> {
+    async updateCharactersEventToNull(ids: number[]): Promise<void> {
         const characterRepository = AppDataSource.getRepository(Character);
 
-        // Retrieve characters with the provided IDs
+        // Récupérer les personnages avec les IDs fournis
         const characters = await characterRepository.find({
             where: {
                 id: In(ids),
@@ -78,7 +78,13 @@ class CharacterService {
             throw new Error('One or more characters not found');
         }
 
-        await characterRepository.remove(characters);
+        // Mettre à jour l'événement associé de chaque personnage pour qu'il soit `null`
+        await Promise.all(
+            characters.map(async (character) => {
+                character.event = null;
+                await characterRepository.save(character);
+            })
+        );
     }
 
     async getCharacterById(id: number): Promise<Character | null> {
@@ -116,6 +122,19 @@ class CharacterService {
         character.role = specializationInfo.role;
         character.bloodLust = specializationInfo.bloodLust;
         character.battleRez = specializationInfo.battleRez;
+
+        if (data.eventCode) {
+            const eventRepository = AppDataSource.getRepository(Event);
+
+            // Récupérer l'événement auquel le personnage sera associé
+            const event = await eventRepository.findOne({ where: { code: data.eventCode } });
+
+            if (!event) {
+                throw new Error('Event not found');
+            }
+
+            character.event = event;
+        }
 
         // Suppression de toute référence à `event`
 

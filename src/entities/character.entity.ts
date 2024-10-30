@@ -34,7 +34,7 @@ export class Character {
   // Ajout de la relation avec l'entité Event
   @ManyToOne(() => Event, event => event.characters, { onDelete: 'CASCADE' })
   @JoinColumn({ name: "eventCode", referencedColumnName: "code" })
-  event!: Event;
+  event!: Event | null;
 
   constructor(name?: string, characterClass?: CharacterClass, specialization?: Specialization) {
     if (name && characterClass && specialization) {

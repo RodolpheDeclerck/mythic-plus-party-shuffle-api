@@ -58,7 +58,7 @@ class CharacterController {
     try {
       const { ids } = req.body;
 
-      await characterService.deleteCharacters(ids);
+      await characterService.updateCharactersEventToNull(ids);
 
       return res.status(200).json({ message: 'Characters deleted successfully' });
     } catch (error: any) {
