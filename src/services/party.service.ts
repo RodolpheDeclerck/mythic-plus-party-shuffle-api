@@ -44,8 +44,9 @@ class PartyService {
         })
 
         //Complete parrties with remaining DPS
-        this.completePartiesWithRemainingDPS(unusedDps, parties)
+        unusedDps = this.completePartiesWithRemainingDPS(unusedDps, parties)
 
+        this.createGroupForRemainingDPS(unusedDps, parties);
 
         return parties;
     }
@@ -357,7 +358,7 @@ class PartyService {
 
     private completePartiesWithRemainingDPS(unusedDps: Character[], parties: Party[]) {
         parties.forEach(party => {
-            while (party.members.length < 5 && unusedDps.length > 0) {
+            while (this.isDpsAvailable(party) && unusedDps.length > 0) {
                 // Chercher un DPS avec une classe unique
                 let dpsToAdd = unusedDps.find(dps =>
                     !party.members.some(member => member.characterClass === dps.characterClass)
@@ -379,6 +380,28 @@ class PartyService {
                 }
             }
         });
+        return unusedDps;
+    }
+
+    private createGroupForRemainingDPS(unusedDps: Character[], parties: Party[]) {
+        // shuffle unused DPS
+        unusedDps.sort(() => Math.random() - 0.5);
+        if (unusedDps.length > 0) {
+            let party = new Party();
+            parties.push(party);
+            unusedDps.forEach(dps => {
+                if (party.members.length >= 3) {
+                    party = new Party();
+                    parties.push(party);
+                }
+                party.members.push(dps);
+                console.log(`Added ${dps.name} as remaining DPS to the party: ${party.id}`);
+            });
+        }
+    }
+
+    private isDpsAvailable(party: Party) {
+        return party.members.filter(member => member.role === 'DIST' || member.role === 'CAC').length < 3;
     }
 
 }
