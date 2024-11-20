@@ -8,6 +8,8 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Configuration de la base de données en fonction de l'environnement
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -19,8 +21,9 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: true,
   entities: [Character, Party, User, Event],
-  migrations: ["src/migrations/*.js"], // Emplacement des fichiers de migrations
-  subscribers: [],
+  migrations: isProduction
+    ? ['dist/migrations/*.js'] // Migrations compilées pour la production
+    : ['src/migrations/*.ts'], // Migrations TypeScript pour le développement  subscribers: [],
 });
 
 export const initializeDatabase = async (): Promise<void> => {
