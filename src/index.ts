@@ -22,15 +22,14 @@ AppDataSource.initialize()
       console.log('Migrations executed successfully!');
     } catch (migrationError) {
       console.error('Error during migration execution:', migrationError);
-      process.exit(1); // Arrêter le serveur en cas d'échec critique
     }
 
-    // Start the server
+    // Démarrage du serveur
     httpServer.listen(PORT, () => {
       console.log(`Server is running at http://localhost:${PORT}`);
     });
   })
-  .catch((err: any) => {
+  .catch((err) => {
     console.error('Error during Data Source initialization:', err);
-    process.exit(1); // Arrêter le processus en cas d'erreur
+    process.exit(1);
   });
