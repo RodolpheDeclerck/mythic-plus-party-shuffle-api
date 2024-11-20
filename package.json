@@ -12,7 +12,7 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:restart": "npm run docker:down && npm run docker:up",
-    "migrate": "node -r ts-node/register ./config/data-source.ts"
+    "migrate": "node -r ts-node/register ./config/data-source.js"
   },
   "keywords": [],
   "author": "",
