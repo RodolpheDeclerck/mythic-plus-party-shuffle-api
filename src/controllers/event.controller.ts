@@ -178,6 +178,18 @@ class EventController {
             return res.status(500).json({ message: 'Internal server error' });
         }
     }
+
+    async setPartiesVisibility(req: Request, res: Response): Promise<Response> {
+        try {
+            const { eventCode } = req.params;
+            const { visible } = req.body;
+            const updatedEvent = await eventService.setPartiesVisibility(eventCode, visible);
+            return res.json(updatedEvent);
+        } catch (error) {
+            console.error('Error setting parties visibility:', error);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+    }
 }
 
 // Exportation du contrôleur

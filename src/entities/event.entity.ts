@@ -38,6 +38,9 @@ export class AppEvent {
     @OneToMany(() => Character, character => character.event)
     characters!: Character[];
 
+    @Column({ type: 'boolean', default: false })
+    arePartiesVisible!: boolean;
+    
     // Relation avec l'utilisateur qui a créé l'événement
     @ManyToOne(() => User, user => user.eventsCreated, { eager: true, onDelete: 'CASCADE' })
     createdBy!: User;

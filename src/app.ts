@@ -18,7 +18,7 @@ app.use(express.json());
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN,
-  methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true, // Envoie et reçoit les cookies
 }));
 
@@ -34,7 +34,7 @@ const httpServer = createServer(app);
 export const io = new Server(httpServer, {
   cors: {
     origin: process.env.CORS_ORIGIN,
-    methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true, // Autoriser les cookies dans les requêtes CORS
   },
 });

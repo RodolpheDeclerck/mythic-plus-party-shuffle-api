@@ -109,6 +109,23 @@ class EventService {
             throw new Error('Error fetching admin events');
         }
     }
+
+    async setPartiesVisibility(eventCode: string, visible: boolean) {
+        const eventRepository = AppDataSource.getRepository(Event);
+
+        try {
+            // Met à jour la visibilité des parties de l'événement
+            await eventRepository.update({ code: eventCode }, { arePartiesVisible: visible });
+
+            // Récupère l'événement mis à jour
+            const updatedEvent = await eventRepository.findOne({ where: { code: eventCode } });
+
+            return updatedEvent;
+        } catch (error) {
+            console.error('Error setting parties visibility:', error);
+            throw new Error('Error setting parties visibility');
+        }
+    }
 }
 
 

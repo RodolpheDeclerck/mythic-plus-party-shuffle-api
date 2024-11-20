@@ -54,9 +54,14 @@ router.get('/events/:eventCode/shuffle-parties', async (req, res) => {
   }
 });
 
-
-
-
+router.patch('/events/:eventCode/setPartiesVisibility', async (req, res) => {
+  try {
+      await eventController.setPartiesVisibility(req, res);
+      io.emit('event-updated');  // Émettre un événement lorsque la visibilité des groupes est mise à jour
+  } catch (error: any) {
+      res.status(500).json({ message: 'Failed to update party visibility', error });
+  }
+});
 
 export default router;
 

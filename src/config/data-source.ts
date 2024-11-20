@@ -19,15 +19,22 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: true,
   entities: [Character, Party, User, Event],
-  migrations: [],
+  migrations: ["src/migrations/*.js"], // Emplacement des fichiers de migrations
   subscribers: [],
 });
 
 // Initialiser la connexion
-AppDataSource.initialize()
-  .then(() => {
-    console.log('Data Source has been initialized!');
-  })
-  .catch((err: any) => {
-    console.error('Error during Data Source initialization:', err);
-  });
+if (!AppDataSource.isInitialized) {
+  AppDataSource.initialize()
+    .then(() => {
+      console.log("Data Source has been initialized!");
+    })
+    .catch((err) => {
+      console.error("Error during Data Source initialization:", err);
+      if (AppDataSource.isInitialized) {
+        AppDataSource.destroy().catch((destroyErr) => {
+          console.error("Error while closing the connection pool:", destroyErr);
+        });
+      }
+    });
+}
