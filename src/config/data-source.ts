@@ -23,18 +23,29 @@ export const AppDataSource = new DataSource({
   subscribers: [],
 });
 
-// Initialiser la connexion
-if (!AppDataSource.isInitialized) {
-  AppDataSource.initialize()
-    .then(() => {
-      console.log("Data Source has been initialized!");
-    })
-    .catch((err) => {
-      console.error("Error during Data Source initialization:", err);
+export const initializeDatabase = async (): Promise<void> => {
+  if (!AppDataSource.isInitialized) {
+    try {
+      await AppDataSource.initialize();
+      console.log('Data Source has been initialized.');
+
+
+      await AppDataSource.runMigrations();
+      console.log('Migrations executed successfully.');
+
+    } catch (err) {
+      console.error('Error during Data Source initialization:', err);
+
+      // Tente de fermer le pool en cas d'erreur
       if (AppDataSource.isInitialized) {
-        AppDataSource.destroy().catch((destroyErr) => {
-          console.error("Error while closing the connection pool:", destroyErr);
-        });
+        try {
+          await AppDataSource.destroy();
+          console.log('Connection pool closed due to error.');
+        } catch (destroyErr) {
+          console.error('Error while closing the connection pool:', destroyErr);
+        }
       }
-    });
-}
+      process.exit(1); // Quitter le processus en cas d'erreur critique
+    }
+  }
+};
