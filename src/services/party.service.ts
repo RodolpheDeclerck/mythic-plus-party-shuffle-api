@@ -17,6 +17,8 @@ class PartyService {
         // Filtrer les personnages selon leur rôle
         let { tanks, healers, melees, dists, brs, bls } = this.filterCharactersByRole(characters);
 
+        this.createParties(characters, parties);
+
         // Creer un groupe pour chaque tank
         this.assignTanksToParties(tanks, parties, usedCharacters);
 
@@ -156,24 +158,62 @@ class PartyService {
         return { tanks, healers, melees, dists, brs, bls };
     }
 
-    // Étape 1 : Créer un groupe pour chaque Tank
-    private assignTanksToParties(tanks: Character[], parties: Party[], usedCharacters: Set<number>) {
-        tanks.forEach(tank => {
+    private createParties(characters: Character[], parties: Party[]) {
+        // Nombre total de parties nécessaires
+        const numberOfParties = Math.ceil(characters.length / 5);
+
+        for (let i = 0; i < numberOfParties; i++) {
             const party = new Party();
-            party.members = [tank];
-            usedCharacters.add(tank.id);
             parties.push(party);
-        });
+        }
     }
 
+    // Étape 1 : Créer un groupe pour chaque Tank
+    private assignTanksToParties(tanks: Character[], parties: Party[], usedCharacters: Set<number>) {
+        let tankIndex = 0;
+
+        // Assigner un tank à chaque groupe existant
+        parties.forEach(party => {
+            if (tankIndex < tanks.length) {
+                const tank = tanks[tankIndex];
+                party.members.push(tank);
+                usedCharacters.add(tank.id);
+                tankIndex++;
+            }
+        });
+
+        // Créer un nouveau groupe pour chaque tank restant
+        while (tankIndex < tanks.length) {
+            const tank = tanks[tankIndex];
+            const newParty = new Party();
+            newParty.members = [tank];
+            usedCharacters.add(tank.id);
+            parties.push(newParty);
+            tankIndex++;
+        }
+    }
+
+
     private createPartiesForHealers(healers: Character[], parties: Party[], usedCharacters: Set<number>) {
-        const remainingPartyToAdd = healers.length - parties.length;
+        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
+        const shuffledHealers = shuffleArray(healers);
+
+        // Étape 1 : Ajouter des soigneurs aux groupes sans tanks
+        parties.forEach((party) => {
+            const hasTank = party.members.some((member) => member.role === 'TANK'); // Vérifie si le groupe a un tank
+            if (!hasTank && shuffledHealers.length > 0) { // Si pas de tank et soigneurs disponibles
+                const healerToAdd = shuffledHealers.shift(); // Prendre un soigneur
+                if (healerToAdd) {
+                    party.members.push(healerToAdd); // Ajouter au groupe
+                    usedCharacters.add(healerToAdd.id); // Marquer comme utilisé
+                }
+            }
+        });
+
+        // Étape 2 : Calculer les soigneurs restants pour créer de nouveaux groupes
+        const remainingPartyToAdd = shuffledHealers.length - parties.length;
 
         if (remainingPartyToAdd > 0) {
-            const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-
-            const shuffledHealers = shuffleArray(healers);
-
             for (let i = 0; i < remainingPartyToAdd; i++) {
                 const party = new Party();
                 parties.push(party);
@@ -185,6 +225,7 @@ class PartyService {
             }
         }
     }
+
 
     private assignBRToParties(brs: Character[], parties: Party[], usedCharacters: Set<number>, partiesHistory: Party[][]) {
         //Pull of role to pick randomly

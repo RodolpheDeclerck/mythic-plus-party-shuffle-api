@@ -23,7 +23,7 @@ export const AppDataSource = new DataSource({
   entities: [Character, Party, User, Event],
   migrations: isProduction
     ? ['dist/migrations/*.js'] // Migrations compilées pour la production
-    : ['src/migrations/*.ts'], // Migrations TypeScript pour le développement  subscribers: [],
+    : ['src/migrations/*.js'], // Migrations TypeScript pour le développement  subscribers: [],
 });
 
 export const initializeDatabase = async (): Promise<void> => {
