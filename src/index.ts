@@ -13,8 +13,17 @@ const PORT = parseInt(process.env.PORT || '8080', 10); // Convertir en nombre
 
 // Initialize the database
 AppDataSource.initialize()
-  .then(() => {
+  .then(async () => {
     console.log('Data Source has been initialized!');
+
+    try {
+      // Exécution des migrations
+      await AppDataSource.runMigrations();
+      console.log('Migrations executed successfully!');
+    } catch (migrationError) {
+      console.error('Error during migration execution:', migrationError);
+      process.exit(1); // Arrêter le serveur en cas d'échec critique
+    }
 
     // Start the server
     httpServer.listen(PORT, () => {
@@ -23,4 +32,5 @@ AppDataSource.initialize()
   })
   .catch((err: any) => {
     console.error('Error during Data Source initialization:', err);
+    process.exit(1); // Arrêter le processus en cas d'erreur
   });
