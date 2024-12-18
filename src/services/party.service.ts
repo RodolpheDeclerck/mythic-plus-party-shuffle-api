@@ -148,7 +148,20 @@ class PartyService {
 
     // Filtrer les personnages par rôle
     private filterCharactersByRole(characters: Character[]) {
-        const tanks = characters.filter(char => SpecializationDetails[char.specialization].role === 'TANK').sort((a, b) => b.iLevel - a.iLevel);
+        const tanks = characters
+            .filter(char => SpecializationDetails[char.specialization].role === 'TANK')
+            .sort((a, b) => {
+                // Trier par keystoneMaxLevel - keystoneMinLevel croissant
+                const diffA = a.keystoneMaxLevel - a.keystoneMinLevel;
+                const diffB = b.keystoneMaxLevel - b.keystoneMinLevel;
+
+                if (diffA !== diffB) {
+                    return diffA - diffB; // Différence croissante
+                }
+
+                // En cas d'égalité, trier par iLevel décroissant
+                return b.iLevel - a.iLevel;
+            });
         const healers = characters.filter(char => SpecializationDetails[char.specialization].role === 'HEAL').sort((a, b) => b.iLevel - a.iLevel);
         const melees = characters.filter(char => SpecializationDetails[char.specialization].role === 'CAC').sort((a, b) => b.iLevel - a.iLevel);
         const dists = characters.filter(char => SpecializationDetails[char.specialization].role === 'DIST').sort((a, b) => b.iLevel - a.iLevel);
@@ -195,8 +208,20 @@ class PartyService {
 
 
     private createPartiesForHealers(healers: Character[], parties: Party[], usedCharacters: Set<number>) {
-        const shuffleArray = (array: Character[]) => array.sort(() => Math.random() - 0.5); // Mélange aléatoire
-        const shuffledHealers = shuffleArray(healers);
+        const shuffledHealers = healers
+            .filter(char => SpecializationDetails[char.specialization].role === 'TANK')
+            .sort((a, b) => {
+                // Trier par keystoneMaxLevel - keystoneMinLevel croissant
+                const diffA = a.keystoneMaxLevel - a.keystoneMinLevel;
+                const diffB = b.keystoneMaxLevel - b.keystoneMinLevel;
+
+                if (diffA !== diffB) {
+                    return diffA - diffB; // Différence croissante
+                }
+
+                // En cas d'égalité, trier par iLevel décroissant
+                return b.iLevel - a.iLevel;
+            });
 
         // Étape 1 : Ajouter des soigneurs aux groupes sans tanks
         parties.forEach((party) => {
