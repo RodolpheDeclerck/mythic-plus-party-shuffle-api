@@ -39,6 +39,8 @@ class CharacterService {
         character.bloodLust = specializationInfo.bloodLust;
         character.battleRez = specializationInfo.battleRez;
         character.event = event;
+        character.keystoneMinLevel = data.keystoneMinLevel;
+        character.keystoneMaxLevel = data.keystoneMaxLevel;
 
         // Sauvegarder le personnage dans la base de données
         await characterRepository.save(character);
@@ -125,6 +127,8 @@ class CharacterService {
         character.role = specializationInfo.role;
         character.bloodLust = specializationInfo.bloodLust;
         character.battleRez = specializationInfo.battleRez;
+        character.keystoneMinLevel = data.keystoneMinLevel;
+        character.keystoneMaxLevel = data.keystoneMaxLevel;
 
         if (data.eventCode) {
             const eventRepository = AppDataSource.getRepository(Event);

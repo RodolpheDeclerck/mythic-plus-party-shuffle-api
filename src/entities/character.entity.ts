@@ -31,6 +31,12 @@ export class Character {
   @Column({ default: false })
   battleRez!: boolean;
 
+  @Column({ default: 2 })
+  keystoneMinLevel!: number;
+
+  @Column({ default: 99 })
+  keystoneMaxLevel!: number;
+
   // Ajout de la relation avec l'entité Event
   @ManyToOne(() => Event, event => event.characters, { onDelete: 'CASCADE' })
   @JoinColumn({ name: "eventCode", referencedColumnName: "code" })

@@ -27,4 +27,10 @@ export class CharacterDto {
 
   @IsNumber()
   eventCode!: string;
+
+  @IsNumber()
+  keystoneMinLevel!: number;
+
+  @IsNumber()
+  keystoneMaxLevel!: number;
 }

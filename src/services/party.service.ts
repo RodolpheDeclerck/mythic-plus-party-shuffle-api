@@ -87,7 +87,7 @@ class PartyService {
             );
 
             // Retourne true si le candidat n'a pas été groupé avec les membres du party dans l'historique
-            return !hasBeenGrouped;
+            return !hasBeenGrouped && candidate.keystoneMinLevel <= party.members[0].keystoneMinLevel && candidate.keystoneMaxLevel >= party.members[0].keystoneMaxLevel;
         });
     }
 
@@ -259,14 +259,27 @@ class PartyService {
                     let filteredBrs = this.filterEligibleMembers(availableBrs, party, partiesHistory);
                     availableBrs = filteredBrs.length > 0 ? filteredBrs : availableBrs;
 
-                    // Trouver celui dont l'iLevel est le plus proche de referenceILevel
-                    brToAdd = availableBrs.reduce((closestBr, currentBr) => {
-                        const closestDifference = Math.abs(closestBr.iLevel - referenceILevel);
-                        const currentDifference = Math.abs(currentBr.iLevel - referenceILevel);
+                    const filteredKeystoneBrs = availableBrs.sort((a, b) => a.keystoneMinLevel - b.keystoneMinLevel);
 
-                        // Sélectionner celui dont la différence d'iLevel est la plus petite
-                        return currentDifference < closestDifference ? currentBr : closestBr;
-                    }, availableBrs[0]); // Initialisation avec le premier élément du tableau filtré
+                    brToAdd = filteredKeystoneBrs.reduce((closestBr, currentBr) => {
+                        const closestKeystoneDiff = closestBr.keystoneMaxLevel - closestBr.keystoneMinLevel;
+                        const currentKeystoneDiff = currentBr.keystoneMaxLevel - currentBr.keystoneMinLevel;
+
+                        if (currentKeystoneDiff < closestKeystoneDiff) {
+                            // Prendre le personnage avec la plus petite différence de keystones
+                            return currentBr;
+                        } else if (currentKeystoneDiff === closestKeystoneDiff) {
+                            // En cas d'égalité sur la différence de keystones, comparer l'iLevel
+                            const closestDifference = Math.abs(closestBr.iLevel - referenceILevel);
+                            const currentDifference = Math.abs(currentBr.iLevel - referenceILevel);
+
+                            // Retourner celui avec l'iLevel le plus proche de la référence
+                            return currentDifference < closestDifference ? currentBr : closestBr;
+                        }
+
+                        return closestBr;
+                    }, availableBrs[0]); // Initialisation avec le premier élément
+
 
                     if (brToAdd) {
                         //Add the character with Battle rez to the party
@@ -308,17 +321,29 @@ class PartyService {
                 // Filtrer les brs qui respectent les conditions de rôle et ne sont pas utilisés
                 let availableBls = bls.filter(bl => bl.role === randomRole && !usedCharacters.has(bl.id));
 
-                let filteredBrs = this.filterEligibleMembers(availableBls, party, partiesHistory);
-                availableBls = filteredBrs.length > 0 ? filteredBrs : availableBls;
+                let filteredBls = this.filterEligibleMembers(availableBls, party, partiesHistory);
+                availableBls = filteredBls.length > 0 ? filteredBls : availableBls;
 
-                // Trouver celui dont l'iLevel est le plus proche de referenceILevel
-                blToAdd = availableBls.reduce((closestBl, currentBl) => {
-                    const closestDifference = Math.abs(closestBl.iLevel - referenceILevel);
-                    const currentDifference = Math.abs(currentBl.iLevel - referenceILevel);
+                const filteredKeystoneBrs = availableBls.sort((a, b) => a.keystoneMinLevel - b.keystoneMinLevel);
 
-                    // Sélectionner celui dont la différence d'iLevel est la plus petite
-                    return currentDifference < closestDifference ? currentBl : closestBl;
-                }, availableBls[0]); // Initialisation avec le premier élément du tableau filtré
+                blToAdd = filteredKeystoneBrs.reduce((closestBr, currentBr) => {
+                    const closestKeystoneDiff = closestBr.keystoneMaxLevel - closestBr.keystoneMinLevel;
+                    const currentKeystoneDiff = currentBr.keystoneMaxLevel - currentBr.keystoneMinLevel;
+
+                    if (currentKeystoneDiff < closestKeystoneDiff) {
+                        // Prendre le personnage avec la plus petite différence de keystones
+                        return currentBr;
+                    } else if (currentKeystoneDiff === closestKeystoneDiff) {
+                        // En cas d'égalité sur la différence de keystones, comparer l'iLevel
+                        const closestDifference = Math.abs(closestBr.iLevel - referenceILevel);
+                        const currentDifference = Math.abs(currentBr.iLevel - referenceILevel);
+
+                        // Retourner celui avec l'iLevel le plus proche de la référence
+                        return currentDifference < closestDifference ? currentBr : closestBr;
+                    }
+
+                    return closestBr;
+                }, availableBls[0]); // Initialisation avec le premier élément
 
                 if (blToAdd) {
                     party.members.push(blToAdd);
@@ -346,15 +371,26 @@ class PartyService {
                 // Filtrer les soigneurs qui ne sont pas déjà utilisés
                 let availableHealers = healers.filter(healer => !usedCharacters.has(healer.id));
 
-                let filteredBrs = this.filterEligibleMembers(availableHealers, party, partiesHistory);
-                availableHealers = filteredBrs.length > 0 ? filteredBrs : availableHealers;
+                let filteredHealers = this.filterEligibleMembers(availableHealers, party, partiesHistory);
+                availableHealers = filteredHealers.length > 0 ? filteredHealers : availableHealers;
 
                 if (availableHealers.length > 0) {
-                    // On cherche le soigneur avec l'ilevel le plus proche
-                    const healerToAdd = availableHealers.reduce((closestHealer, currentHealer) => {
-                        const closestDifference = Math.abs(closestHealer.iLevel - partyIlevel);
-                        const currentDifference = Math.abs(currentHealer.iLevel - partyIlevel);
-                        return currentDifference < closestDifference ? currentHealer : closestHealer;
+                    // Trouver le soigneur optimal
+                    const healerToAdd = availableHealers.reduce((bestHealer, currentHealer) => {
+                        const bestKeystoneDiff = bestHealer.keystoneMaxLevel - bestHealer.keystoneMinLevel;
+                        const currentKeystoneDiff = currentHealer.keystoneMaxLevel - currentHealer.keystoneMinLevel;
+
+                        if (currentKeystoneDiff < bestKeystoneDiff) {
+                            // Prendre celui avec la plus petite différence de keystones
+                            return currentHealer;
+                        } else if (currentKeystoneDiff === bestKeystoneDiff) {
+                            // Si égalité, comparer l'iLevel par rapport au partyIlevel
+                            const bestDifference = Math.abs(bestHealer.iLevel - partyIlevel);
+                            const currentDifference = Math.abs(currentHealer.iLevel - partyIlevel);
+                            return currentDifference < bestDifference ? currentHealer : bestHealer;
+                        }
+
+                        return bestHealer;
                     });
 
                     if (healerToAdd) {
@@ -369,60 +405,99 @@ class PartyService {
 
     private addignDistAndMelees(dists: Character[], melees: Character[], parties: Party[], usedCharacters: Set<number>, partiesHistory: Party[][]) {
         parties.forEach(party => {
-
+            // Filtrer les DPS éligibles
             let filteredMelees = this.filterEligibleMembers(melees, party, partiesHistory);
             melees = filteredMelees.find(fm => !usedCharacters.has(fm.id)) ? filteredMelees : melees;
 
             let filteredDists = this.filterEligibleMembers(dists, party, partiesHistory);
-            dists = filteredDists.find(fm => !usedCharacters.has(fm.id)) ? filteredDists : dists;
+            dists = filteredDists.find(fd => !usedCharacters.has(fd.id)) ? filteredDists : dists;
 
+            // Ajouter un CAC au groupe s'il n'y en a pas encore
             if (!party.members.find(member => member.role === 'CAC')) {
-                const meleeToAdd = melees.find(melee => !usedCharacters.has(melee.id))
-                if (meleeToAdd) {
+                const meleeToAdd = melees.reduce((bestMelee, currentMelee) => {
+                    const bestKeystoneDiff = bestMelee.keystoneMaxLevel - bestMelee.keystoneMinLevel;
+                    const currentKeystoneDiff = currentMelee.keystoneMaxLevel - currentMelee.keystoneMinLevel;
+
+                    if (currentKeystoneDiff < bestKeystoneDiff) {
+                        return currentMelee;
+                    } else if (currentKeystoneDiff === bestKeystoneDiff) {
+                        const bestDifference = Math.abs(bestMelee.iLevel - party.members[0].iLevel);
+                        const currentDifference = Math.abs(currentMelee.iLevel - party.members[0].iLevel);
+                        return currentDifference < bestDifference ? currentMelee : bestMelee;
+                    }
+
+                    return bestMelee;
+                }, melees[0]);
+
+                if (meleeToAdd && !usedCharacters.has(meleeToAdd.id)) {
                     party.members.push(meleeToAdd);
-                    usedCharacters.add(meleeToAdd.id)
+                    usedCharacters.add(meleeToAdd.id);
                     console.log(`Added ${meleeToAdd.name} as CAC to the party: ${party.id}`);
                 }
             }
 
+            // Ajouter un DIST au groupe s'il n'y en a pas encore
             if (!party.members.find(member => member.role === 'DIST')) {
-                const distToAdd = dists.find(dist => !usedCharacters.has(dist.id))
-                if (distToAdd) {
+                const distToAdd = dists.reduce((bestDist, currentDist) => {
+                    const bestKeystoneDiff = bestDist.keystoneMaxLevel - bestDist.keystoneMinLevel;
+                    const currentKeystoneDiff = currentDist.keystoneMaxLevel - currentDist.keystoneMinLevel;
+
+                    if (currentKeystoneDiff < bestKeystoneDiff) {
+                        return currentDist;
+                    } else if (currentKeystoneDiff === bestKeystoneDiff) {
+                        const bestDifference = Math.abs(bestDist.iLevel - party.members[0].iLevel);
+                        const currentDifference = Math.abs(currentDist.iLevel - party.members[0].iLevel);
+                        return currentDifference < bestDifference ? currentDist : bestDist;
+                    }
+
+                    return bestDist;
+                }, dists[0]);
+
+                if (distToAdd && !usedCharacters.has(distToAdd.id)) {
                     party.members.push(distToAdd);
-                    usedCharacters.add(distToAdd.id)
+                    usedCharacters.add(distToAdd.id);
                     console.log(`Added ${distToAdd.name} as DIST to the party: ${party.id}`);
                 }
             }
-
-        })
+        });
     }
 
-    private completePartiesWithRemainingDPS(unusedDps: Character[], parties: Party[]) {
+
+    private completePartiesWithRemainingDPS(unusedDps: Character[], parties: Party[]): Character[] {
         parties.forEach(party => {
             while (this.isDpsAvailable(party) && unusedDps.length > 0) {
-                // Chercher un DPS avec une classe unique
-                let dpsToAdd = unusedDps.find(dps =>
-                    !party.members.some(member => member.characterClass === dps.characterClass)
-                ) ||
-                    // Si non trouvé, chercher un DPS avec une spécialisation unique
-                    unusedDps.find(dps =>
-                        !party.members.some(member => member.specialization === dps.specialization)
-                    ) ||
-                    // Sinon, prendre le premier DPS disponible
-                    unusedDps.shift();
+                // Calculer l'iLevel moyen des membres actuels du groupe
+                const partyIlevel = party.members.reduce((sum, member) => sum + member.iLevel, 0) / party.members.length;
 
-                // Ajouter le DPS si trouvé
+                // Trouver le meilleur DPS selon les critères
+                const dpsToAdd = unusedDps.reduce((bestDps, currentDps) => {
+                    const bestKeystoneDiff = bestDps.keystoneMaxLevel - bestDps.keystoneMinLevel;
+                    const currentKeystoneDiff = currentDps.keystoneMaxLevel - currentDps.keystoneMinLevel;
+
+                    if (currentKeystoneDiff < bestKeystoneDiff) {
+                        return currentDps;
+                    } else if (currentKeystoneDiff === bestKeystoneDiff) {
+                        const bestDifference = Math.abs(bestDps.iLevel - partyIlevel);
+                        const currentDifference = Math.abs(currentDps.iLevel - partyIlevel);
+                        return currentDifference < bestDifference ? currentDps : bestDps;
+                    }
+
+                    return bestDps;
+                }, unusedDps[0]);
+
+                // Ajouter le DPS trouvé au groupe
                 if (dpsToAdd) {
                     party.members.push(dpsToAdd);
-                    unusedDps = unusedDps.filter(dps => dps !== dpsToAdd);
+                    unusedDps = unusedDps.filter(dps => dps.id !== dpsToAdd.id); // Retirer le DPS des inutilisés
                     console.log(`Added ${dpsToAdd.name} as remaining DPS to the party: ${party.id}`);
                 } else {
-                    break;
+                    break; // Si aucun DPS valide, sortir de la boucle
                 }
             }
         });
-        return unusedDps;
+        return unusedDps; // Retourner les DPS non utilisés après avoir complété les groupes
     }
+
 
     private createGroupForRemainingDPS(unusedDps: Character[], parties: Party[]) {
         // shuffle unused DPS
