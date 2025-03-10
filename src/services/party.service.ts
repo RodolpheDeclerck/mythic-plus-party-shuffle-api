@@ -8,47 +8,127 @@ class PartyService {
 
     // Fonction principale pour mélanger les groupes
     async shuffleGroups(characters: Character[], eventCode: string): Promise<Party[]> {
+        if (characters.length === 0) {
+            return [];
+        }
+
         const parties: Party[] = [];
-
         const partiesHistory = await this.getLastThreeShuffles(eventCode);
+        const usedCharacters = new Set<number>();
 
-        const usedCharacters = new Set<number>(); // Pour éviter les doublons
+        // Mélanger tous les personnages avant de les filtrer
+        characters = this.shuffleArray(characters);
 
-        // Filtrer les personnages selon leur rôle
+        // Filtrer et mélanger les personnages par rôle
         let { tanks, healers, melees, dists, brs, bls } = this.filterCharactersByRole(characters);
 
-        this.createParties(characters, parties);
+        // Si aucun tank ni heal, créer des groupes de DPS uniquement
+        if (tanks.length === 0 && healers.length === 0) {
+            const allDps = [...melees, ...dists];
+            const dpsOnlyParties = this.createBalancedDpsOnlyGroups(allDps, brs, bls, partiesHistory);
+            this.checkGroupQuality(dpsOnlyParties);
+            return dpsOnlyParties;
+        }
 
-        // Creer un groupe pour chaque tank
-        this.assignTanksToParties(tanks, parties, usedCharacters);
+        // Créer le nombre nécessaire de groupes
+        const numberOfParties = Math.max(
+            1,
+            tanks.length,
+            healers.length,
+            Math.ceil(characters.length / 5)
+        );
 
-        // Creer un groupe pour chaque healer
-        this.createPartiesForHealers(healers, parties, usedCharacters);
+        // Créer les groupes initiaux
+        for (let i = 0; i < numberOfParties; i++) {
+            parties.push(new Party());
+        }
 
-        //Add a Battle rez from random role to the party if needed
+        // Mélanger l'ordre des groupes
+        this.shuffleArray(parties);
+
+        // Distribuer les tanks et healers de manière aléatoire
+        const availableParties = [...parties];
+        this.shuffleArray(availableParties);
+
+        // Assigner les tanks
+        tanks.forEach(tank => {
+            if (availableParties.length > 0) {
+                const party = availableParties.pop()!;
+                party.members.push(tank);
+                usedCharacters.add(tank.id);
+            } else {
+                const newParty = new Party();
+                newParty.members.push(tank);
+                usedCharacters.add(tank.id);
+                parties.push(newParty);
+            }
+        });
+
+        // Mélanger à nouveau les groupes avant d'assigner les healers
+        this.shuffleArray(parties);
+
+        // Assigner les healers aux groupes qui n'en ont pas
+        healers.forEach(healer => {
+            if (!usedCharacters.has(healer.id)) {
+                const eligibleParties = parties.filter(p => !p.members.some(m => m.role === 'HEAL'));
+                if (eligibleParties.length > 0) {
+                    const randomParty = eligibleParties[Math.floor(Math.random() * eligibleParties.length)];
+                    randomParty.members.push(healer);
+                    usedCharacters.add(healer.id);
+                } else {
+                    const newParty = new Party();
+                    newParty.members.push(healer);
+                    usedCharacters.add(healer.id);
+                    parties.push(newParty);
+                }
+            }
+        });
+
+        // Mélanger les groupes avant d'assigner BR et BL
+        this.shuffleArray(parties);
+
+        // Assigner BR et BL
         this.assignBRToParties(brs, parties, usedCharacters, partiesHistory);
-
-        //Add a Blood Lust to the group
         this.assignBLToParties(bls, parties, usedCharacters, partiesHistory);
 
-        //Add healer to all parties without healer
-        this.assignHealersToParties(parties, healers, usedCharacters, partiesHistory);
+        // Mélanger à nouveau avant d'assigner les DPS
+        this.shuffleArray(parties);
 
+        // Assigner les DPS restants
         this.addignDistAndMelees(dists, melees, parties, usedCharacters, partiesHistory);
 
-
         let unusedDps: Character[] = [];
-
         [...dists, ...melees].forEach(dps => {
             if (!usedCharacters.has(dps.id)) {
                 unusedDps.push(dps);
             }
-        })
+        });
 
-        //Complete parrties with remaining DPS
-        unusedDps = this.completePartiesWithRemainingDPS(unusedDps, parties)
+        // Mélanger les DPS non utilisés
+        unusedDps = this.shuffleArray(unusedDps);
 
+        // Compléter les groupes avec les DPS restants
+        unusedDps = this.completePartiesWithRemainingDPS(unusedDps, parties);
+
+        // Créer des groupes pour les DPS restants
         this.createGroupForRemainingDPS(unusedDps, parties);
+
+        // Optimiser la distribution globale
+        console.log('Optimisation de la distribution globale des groupes...');
+        this.optimizeGlobalDistribution(parties, partiesHistory);
+        console.log('Optimisation terminée');
+
+        // Vérification finale : s'assurer que tous les joueurs sont dans un groupe
+        const allAssignedPlayers = new Set(parties.flatMap(p => p.members.map(m => m.id)));
+        const unassignedPlayers = characters.filter(c => !allAssignedPlayers.has(c.id));
+        
+        if (unassignedPlayers.length > 0) {
+            console.log(`Répartition des ${unassignedPlayers.length} joueurs non assignés...`);
+            this.distributeUnassignedPlayers(unassignedPlayers, parties);
+        }
+
+        // Vérifier la qualité des groupes formés
+        this.checkGroupQuality(parties);
 
         return parties;
     }
@@ -69,25 +149,140 @@ class PartyService {
         await redisClient.set(`${this.shuffleHistoryKey}:${eventCode}`, JSON.stringify(history));
     }
 
+    private calculateRedundancyScore(candidate: Character, party: Party, previousShuffles: Party[][]): number {
+        let score = 0;
+        const currentGroupMembers = party.members.map(member => member.id);
+        
+        // Parcourir l'historique du plus récent au plus ancien
+        for (let shuffleIndex = previousShuffles.length - 1; shuffleIndex >= 0; shuffleIndex--) {
+            const shuffle = previousShuffles[shuffleIndex];
+            const weight = 1 / (previousShuffles.length - shuffleIndex); // Plus récent = plus de poids
+            
+            for (const group of shuffle) {
+                const commonMembers = group.members.filter(m => 
+                    currentGroupMembers.includes(m.id) || m.id === candidate.id
+                ).length;
+                
+                if (commonMembers > 0) {
+                    score += commonMembers * weight;
+                }
+            }
+        }
+        
+        return score;
+    }
+
+    private swapMembers(party1: Party, party2: Party, member1: Character, member2: Character): void {
+        const index1 = party1.members.indexOf(member1);
+        const index2 = party2.members.indexOf(member2);
+        
+        if (index1 !== -1 && index2 !== -1) {
+            party1.members[index1] = member2;
+            party2.members[index2] = member1;
+        }
+    }
+
+    private optimizeGlobalDistribution(parties: Party[], previousShuffles: Party[][]): void {
+        const allMembers = parties.flatMap(p => p.members);
+        let improved = true;
+        let iterations = 0;
+        const MAX_ITERATIONS = 100; // Éviter les boucles infinies
+
+        while (improved && iterations < MAX_ITERATIONS) {
+            improved = false;
+            iterations++;
+            
+            // Essayer d'échanger des membres entre les groupes
+            for (let i = 0; i < parties.length; i++) {
+                for (let j = i + 1; j < parties.length; j++) {
+                    const party1 = parties[i];
+                    const party2 = parties[j];
+                    
+                    for (const member1 of party1.members) {
+                        for (const member2 of party2.members) {
+                            // Vérifier si l'échange est possible (même rôle)
+                            if (member1.role === member2.role) {
+                                // Calculer le score avant l'échange
+                                const scoreBefore = 
+                                    this.calculateRedundancyScore(member1, party1, previousShuffles) +
+                                    this.calculateRedundancyScore(member2, party2, previousShuffles);
+                                
+                                // Simuler l'échange
+                                const scoreAfter = 
+                                    this.calculateRedundancyScore(member2, party1, previousShuffles) +
+                                    this.calculateRedundancyScore(member1, party2, previousShuffles);
+                                
+                                // Si l'échange améliore le score global
+                                if (scoreAfter < scoreBefore) {
+                                    // Effectuer l'échange
+                                    this.swapMembers(party1, party2, member1, member2);
+                                    improved = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     private filterEligibleMembers(
         candidates: Character[],
         party: Party,
         previousShuffles: Party[][]
     ): Character[] {
-        const groupMembers = party.members.map(member => member.id);
+        if (previousShuffles.length === 0 || party.members.length === 0) {
+            return candidates;
+        }
 
-        return candidates.filter(candidate => {
-            // Vérifie si le candidat a été dans le même groupe que l'un des membres actuels du party
-            const hasBeenGrouped = previousShuffles.some(shuffle =>
-                shuffle.some(group =>
-                    group.members.some(member => groupMembers.includes(member.id)) &&
-                    group.members.some(member => member.id === candidate.id)
-                )
-            );
+        // Calculer les scores de redondance pour chaque candidat
+        const candidateScores = candidates.map(candidate => ({
+            candidate,
+            score: this.calculateRedundancyScore(candidate, party, previousShuffles)
+        }));
 
-            // Retourne true si le candidat n'a pas été groupé avec les membres du party dans l'historique
-            return !hasBeenGrouped && candidate.keystoneMinLevel <= party.members[0].keystoneMinLevel && candidate.keystoneMaxLevel >= party.members[0].keystoneMaxLevel;
+        // Trouver le score minimum
+        const minScore = Math.min(...candidateScores.map(c => c.score));
+
+        // Filtrer les candidats avec le score minimum
+        const leastRedundantCandidates = candidateScores
+            .filter(c => c.score === minScore)
+            .map(c => c.candidate);
+
+        if (party.members.length === 0) {
+            return leastRedundantCandidates;
+        }
+
+        // Calculer la plage de keystone du groupe
+        const partyKeyMin = Math.min(...party.members.map(m => m.keystoneMinLevel));
+        const partyKeyMax = Math.max(...party.members.map(m => m.keystoneMaxLevel));
+
+        // Essayer d'abord avec des critères stricts
+        const strictCompatibleCandidates = leastRedundantCandidates.filter(candidate =>
+            candidate.keystoneMinLevel <= partyKeyMin &&
+            candidate.keystoneMaxLevel >= partyKeyMax
+        );
+
+        if (strictCompatibleCandidates.length > 0) {
+            return strictCompatibleCandidates;
+        }
+
+        // Si aucun candidat strictement compatible, essayer avec des critères plus souples
+        const KEYSTONE_TOLERANCE = 2; // Tolérance de 2 niveaux
+        const looseCompatibleCandidates = leastRedundantCandidates.filter(candidate =>
+            Math.abs(candidate.keystoneMinLevel - partyKeyMin) <= KEYSTONE_TOLERANCE &&
+            Math.abs(candidate.keystoneMaxLevel - partyKeyMax) <= KEYSTONE_TOLERANCE
+        );
+
+        if (looseCompatibleCandidates.length > 0) {
+            return looseCompatibleCandidates;
+        }
+
+        // Si toujours aucun candidat, retourner les candidats avec la plus petite différence de keystone
+        return leastRedundantCandidates.sort((a, b) => {
+            const aDiff = Math.abs(a.keystoneMinLevel - partyKeyMin) + Math.abs(a.keystoneMaxLevel - partyKeyMax);
+            const bDiff = Math.abs(b.keystoneMinLevel - partyKeyMin) + Math.abs(b.keystoneMaxLevel - partyKeyMax);
+            return aDiff - bDiff;
         });
     }
 
@@ -121,28 +316,23 @@ class PartyService {
         }
     }
 
+    async deleteShuffleHistory(eventCode: string): Promise<void> {
+        await redisClient.set(`${this.shuffleHistoryKey}:${eventCode}`, JSON.stringify([]));
+    }
 
     async deleteGroupsFromRedis(eventCode: string): Promise<void> {
+        // Réinitialiser l'historique des shuffles
+        await this.deleteShuffleHistory(eventCode);
+        // Réinitialiser les groupes actuels
         await redisClient.set('party:' + eventCode, JSON.stringify([]));
     }
 
     async createOrUpdatePartiesToRedis(parties: Party[], eventCode: string): Promise<void> {
-        // Charger l'historique des trois derniers shuffles
-        const history = await this.getLastThreeShuffles(eventCode);
+        // Sauvegarder le nouveau shuffle dans l'historique
+        await this.saveShuffleToHistory(eventCode, parties);
 
-        if (history.length > 0) {
-            // Remplacer le dernier élément de l'historique par le nouveau `parties`
-            history[history.length - 1] = parties;
-        } else {
-            // Si l'historique est vide, ajouter `parties` comme première entrée
-            history.push(parties);
-        }
-
-        // Sauvegarder l'historique mis à jour dans Redis
-        await redisClient.set(`${this.shuffleHistoryKey}:${eventCode}`, JSON.stringify(history));
-
-        this.saveGroupsToRedis(parties, eventCode);
-
+        // Sauvegarder l'état actuel des groupes
+        await this.saveGroupsToRedis(parties, eventCode);
     }
 
 
@@ -172,8 +362,21 @@ class PartyService {
     }
 
     private createParties(characters: Character[], parties: Party[]) {
-        // Nombre total de parties nécessaires
-        const numberOfParties = Math.ceil(characters.length / 5);
+        // Compter le nombre de tanks et healers
+        const tanks = characters.filter(char => SpecializationDetails[char.specialization].role === 'TANK');
+        const healers = characters.filter(char => SpecializationDetails[char.specialization].role === 'HEAL');
+        
+        // Calculer le nombre de groupes nécessaires
+        // Au moins 1 groupe, et le maximum entre :
+        // - le nombre de tanks
+        // - le nombre de healers (un healer par groupe)
+        // - le nombre total de joueurs divisé par 5
+        const numberOfParties = Math.max(
+            1,
+            tanks.length,
+            healers.length,  // On veut un groupe par healer
+            Math.ceil(characters.length / 5)
+        );
 
         for (let i = 0; i < numberOfParties; i++) {
             const party = new Party();
@@ -184,6 +387,11 @@ class PartyService {
     // Étape 1 : Créer un groupe pour chaque Tank
     private assignTanksToParties(tanks: Character[], parties: Party[], usedCharacters: Set<number>) {
         let tankIndex = 0;
+
+        // Si aucun tank, mais qu'il y a des personnages, on continue
+        if (tanks.length === 0 && parties.length > 0) {
+            return;
+        }
 
         // Assigner un tank à chaque groupe existant
         parties.forEach(party => {
@@ -208,8 +416,16 @@ class PartyService {
 
 
     private createPartiesForHealers(healers: Character[], parties: Party[], usedCharacters: Set<number>) {
+        // Si nous avons un seul healer et aucun membre dans les groupes existants, l'ajouter au premier groupe
+        if (healers.length === 1 && parties.length > 0 && parties[0].members.length === 0) {
+            const healer = healers[0];
+            parties[0].members.push(healer);
+            usedCharacters.add(healer.id);
+            return;
+        }
+
         const shuffledHealers = healers
-            .filter(char => SpecializationDetails[char.specialization].role === 'TANK')
+            .filter(char => SpecializationDetails[char.specialization].role === 'HEAL')
             .sort((a, b) => {
                 // Trier par keystoneMaxLevel - keystoneMinLevel croissant
                 const diffA = a.keystoneMaxLevel - a.keystoneMinLevel;
@@ -262,7 +478,7 @@ class PartyService {
         //Browse all existing parties
         parties.forEach(party => {
             //Process only if the tank doesn't already have Battle Rez
-            if (!party.members[0].battleRez) {
+            if (party.members.length > 0 && !party.members[0].battleRez) {
 
                 //Remove HEAL from the role pull if previously added Battle Rez character is HEAL
                 if (party.members.length > 0 && party.members[0].role === 'HEAL') {
@@ -334,6 +550,7 @@ class PartyService {
 
         parties.forEach(party => {
 
+            if (party.members.length > 0) {
             //Remove HEAL from the role pull if previously added Battle Rez character is HEAL
             if (party.members.length > 0 && party.members[0].role === 'HEAL' || party.members.length > 1 && party.members[1].role === 'HEAL') {
                 roles = roles.filter(role => role !== 'HEAL');
@@ -376,11 +593,12 @@ class PartyService {
                     console.log(`Added ${blToAdd.name} as Blood Lust to the party: ${party.id}`);
                 }
                 else {
-                    roles = roles.filter(role => role !== randomRole);
+                        roles = roles.filter(role => role !== randomRole);
+                    }
                 }
+                blToAdd = null;
+                roles = ['HEAL', 'DIST', 'CAC'];
             }
-            blToAdd = null;
-            roles = ['HEAL', 'DIST', 'CAC'];
         });
     }
 
@@ -388,42 +606,51 @@ class PartyService {
 
     // Étape 2 : Ajouter un HEAL dans chaque groupe
     private assignHealersToParties(parties: Party[], healers: Character[], usedCharacters: Set<number>, partiesHistory: Party[][]) {
-        parties.forEach(party => {
-            // Si le groupe n'a pas encore de HEAL
-            if (!party.members.find(member => member.role === 'HEAL')) {
-                const partyIlevel = party.members[0].iLevel; // On prend l'ilevel du premier membre du groupe
+        // Créer une copie des healers disponibles
+        let availableHealers = [...healers].filter(healer => !usedCharacters.has(healer.id));
 
-                // Filtrer les soigneurs qui ne sont pas déjà utilisés
-                let availableHealers = healers.filter(healer => !usedCharacters.has(healer.id));
+        // D'abord, essayer d'ajouter un healer à chaque groupe existant qui n'en a pas
+        parties.forEach(party => {
+            if (party.members.length > 0 && !party.members.find(member => member.role === 'HEAL') && availableHealers.length > 0) {
+                const partyIlevel = party.members[0].iLevel;
 
                 let filteredHealers = this.filterEligibleMembers(availableHealers, party, partiesHistory);
-                availableHealers = filteredHealers.length > 0 ? filteredHealers : availableHealers;
+                let healersToConsider = filteredHealers.length > 0 ? filteredHealers : availableHealers;
 
-                if (availableHealers.length > 0) {
-                    // Trouver le soigneur optimal
-                    const healerToAdd = availableHealers.reduce((bestHealer, currentHealer) => {
+                if (healersToConsider.length > 0) {
+                    // Trouver le healer optimal
+                    const healerToAdd = healersToConsider.reduce((bestHealer, currentHealer) => {
                         const bestKeystoneDiff = bestHealer.keystoneMaxLevel - bestHealer.keystoneMinLevel;
                         const currentKeystoneDiff = currentHealer.keystoneMaxLevel - currentHealer.keystoneMinLevel;
 
                         if (currentKeystoneDiff < bestKeystoneDiff) {
-                            // Prendre celui avec la plus petite différence de keystones
                             return currentHealer;
                         } else if (currentKeystoneDiff === bestKeystoneDiff) {
-                            // Si égalité, comparer l'iLevel par rapport au partyIlevel
                             const bestDifference = Math.abs(bestHealer.iLevel - partyIlevel);
                             const currentDifference = Math.abs(currentHealer.iLevel - partyIlevel);
                             return currentDifference < bestDifference ? currentHealer : bestHealer;
                         }
-
                         return bestHealer;
                     });
 
                     if (healerToAdd) {
-                        party.members.push(healerToAdd); // Ajouter le soigneur au groupe
-                        usedCharacters.add(healerToAdd.id); // Marquer le soigneur comme utilisé
+                        party.members.push(healerToAdd);
+                        usedCharacters.add(healerToAdd.id);
                         console.log(`Added ${healerToAdd.name} as healer to the party: ${party.id}`);
+                        availableHealers = availableHealers.filter(h => h.id !== healerToAdd.id);
                     }
                 }
+            }
+        });
+
+        // Ensuite, créer de nouveaux groupes pour les healers restants
+        availableHealers.forEach(healer => {
+            if (!usedCharacters.has(healer.id)) {
+                const party = new Party();
+                party.members.push(healer);
+                usedCharacters.add(healer.id);
+                parties.push(party);
+                console.log(`Created new party with healer: ${healer.name}`);
             }
         });
     }
@@ -525,24 +752,121 @@ class PartyService {
 
 
     private createGroupForRemainingDPS(unusedDps: Character[], parties: Party[]) {
-        // shuffle unused DPS
-        unusedDps.sort(() => Math.random() - 0.5);
-        if (unusedDps.length > 0) {
-            let party = new Party();
-            parties.push(party);
-            unusedDps.forEach(dps => {
-                if (party.members.length >= 3) {
-                    party = new Party();
-                    parties.push(party);
-                }
-                party.members.push(dps);
-                console.log(`Added ${dps.name} as remaining DPS to the party: ${party.id}`);
-            });
+        if (unusedDps.length === 0) return;
+
+        // Trier les DPS par keystone et iLevel
+        unusedDps.sort((a, b) => {
+            const aKeyRange = a.keystoneMaxLevel - a.keystoneMinLevel;
+            const bKeyRange = b.keystoneMaxLevel - b.keystoneMinLevel;
+            if (aKeyRange !== bKeyRange) return aKeyRange - bKeyRange;
+            return b.iLevel - a.iLevel;
+        });
+
+        let currentParty = new Party();
+        parties.push(currentParty);
+
+        for (const dps of unusedDps) {
+            if (currentParty.members.length >= 5) {
+                currentParty = new Party();
+                parties.push(currentParty);
+            }
+            currentParty.members.push(dps);
+            console.log(`Added ${dps.name} as remaining DPS to the party: ${currentParty.id}`);
         }
     }
 
     private isDpsAvailable(party: Party) {
         return party.members.filter(member => member.role === 'DIST' || member.role === 'CAC').length < 3;
+    }
+
+    private shuffleArray<T>(array: T[]): T[] {
+        // Créer une copie de l'array pour ne pas modifier l'original
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }
+
+    private createBalancedDpsOnlyGroups(
+        allDps: Character[],
+        brs: Character[],
+        bls: Character[],
+        partiesHistory: Party[][]
+    ): Party[] {
+        const parties: Party[] = [];
+        const usedCharacters = new Set<number>();
+        const targetGroupSize = 5;
+
+        // Créer des groupes de taille optimale
+        while (allDps.length > 0) {
+            const party = new Party();
+            parties.push(party);
+
+            // Essayer d'ajouter un BR s'il y en a de disponible
+            const availableBr = brs.find(br => !usedCharacters.has(br.id));
+            if (availableBr) {
+                party.members.push(availableBr);
+                usedCharacters.add(availableBr.id);
+                allDps = allDps.filter(dps => dps.id !== availableBr.id);
+            }
+
+            // Essayer d'ajouter un BL s'il y en a de disponible
+            const availableBl = bls.find(bl => !usedCharacters.has(bl.id));
+            if (availableBl) {
+                party.members.push(availableBl);
+                usedCharacters.add(availableBl.id);
+                allDps = allDps.filter(dps => dps.id !== availableBl.id);
+            }
+
+            // Remplir le reste du groupe
+            while (party.members.length < targetGroupSize && allDps.length > 0) {
+                const dpsToAdd = allDps[0];
+                party.members.push(dpsToAdd);
+                usedCharacters.add(dpsToAdd.id);
+                allDps = allDps.filter(dps => dps.id !== dpsToAdd.id);
+            }
+        }
+
+        return parties;
+    }
+
+    private distributeUnassignedPlayers(unassignedPlayers: Character[], parties: Party[]): void {
+        // Trier les groupes par taille croissante
+        parties.sort((a, b) => a.members.length - b.members.length);
+
+        for (const player of unassignedPlayers) {
+            // Trouver le groupe le plus petit qui peut accueillir le joueur
+            const targetParty = parties.find(p => p.members.length < 5);
+            
+            if (targetParty) {
+                targetParty.members.push(player);
+            } else {
+                // Si aucun groupe existant ne peut accueillir le joueur, créer un nouveau groupe
+                const newParty = new Party();
+                newParty.members.push(player);
+                parties.push(newParty);
+            }
+        }
+    }
+
+    // Ajouter une méthode pour vérifier la qualité des groupes
+    private checkGroupQuality(parties: Party[]): void {
+        parties.forEach((party, index) => {
+            if (party.members.length === 0) return;
+
+            const keyMin = Math.min(...party.members.map(m => m.keystoneMinLevel));
+            const keyMax = Math.max(...party.members.map(m => m.keystoneMaxLevel));
+            const keyRange = keyMax - keyMin;
+
+            if (keyRange > 4) { // Si la différence est trop grande
+                console.log(`⚠️ Groupe ${index + 1} : Large écart de keystones (${keyMin}-${keyMax})`);
+                party.members.forEach(member => {
+                    console.log(`  - ${member.name}: ${member.keystoneMinLevel}-${member.keystoneMaxLevel}`);
+                });
+            }
+        });
     }
 
 }
