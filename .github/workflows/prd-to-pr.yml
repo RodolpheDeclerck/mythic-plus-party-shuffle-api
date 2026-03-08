@@ -48,6 +48,9 @@ jobs:
       - name: Run Claude Code
         uses: anthropics/claude-code-base-action@beta
         with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          max_turns: "20"
+          allowed_tools: "Bash(git:*),Bash(npm:*),Read,Edit,MultiEdit,Write,LS,Glob,Grep,TodoWrite"
           prompt: |
             You are working in an existing backend repository.
 
@@ -56,31 +59,40 @@ jobs:
 
             Follow CLAUDE.md strictly.
 
-            Target backend architecture:
-            - NestJS
-            - CQRS
-            - DDD
-            - Hexagonal Architecture
-            - Prisma instead of TypeORM
+            Important context:
+            - the current repository is still based on Express and TypeORM
+            - the target architecture is NestJS + CQRS + DDD + Hexagonal Architecture + Prisma
+            - this migration is in progress, not completed yet
 
-            Objectives:
-            - implement the feature described in the PRD
-            - respect the existing repository structure
-            - keep the domain pure
-            - use Prisma only in infrastructure
-            - keep controllers thin
-            - separate commands and queries
-            - add or adapt tests when relevant
-            - leave the repository in a committable state
+            For this task, do NOT attempt a full migration of the repository.
+
+            Your mission is to implement the smallest coherent step toward the target architecture.
+
+            For this PRD, do exactly this:
+            - create a new isolated folder for the target architecture work
+            - do not refactor the whole existing app
+            - do not modify existing Express routes unless strictly necessary
+            - create a minimal health feature in a new target-oriented structure
+            - if needed, implement it as an isolated module/folder that prepares the Nest-style architecture
+            - keep the change small, focused, and committable
+
+            Expected outcome:
+            - a new health feature exists
+            - the implementation reflects the target architecture direction
+            - the existing app is not broadly refactored
+            - the repository remains stable
 
             Constraints:
             - do not touch secrets
             - do not modify CI/CD unless strictly necessary
             - avoid unrelated changes
-            - if the PRD is ambiguous, implement the smallest coherent MVP
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "Bash(git:*),Bash(npm:*),View,GlobTool,GrepTool,BatchTool,Edit,Write"
-          max_turns: "10"
+            - prefer writing files over long exploration
+            - after understanding the repo, start implementing immediately
+
+      - name: Show git status
+        shell: bash
+        run: |
+          git status --short
 
       - name: Commit generated changes
         shell: bash
@@ -97,11 +109,17 @@ jobs:
           git commit -m "feat: implement PRD ${{ steps.detect.outputs.safe_name }}"
 
       - name: Push working branch
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           git push origin "${{ steps.detect.outputs.branch_name }}"
+
+      - name: Install GitHub CLI
+        shell: bash
+        run: |
+          type gh >/dev/null 2>&1 || (
+            sudo apt-get update &&
+            sudo apt-get install -y gh
+          )
 
       - name: Create pull request
         env:
