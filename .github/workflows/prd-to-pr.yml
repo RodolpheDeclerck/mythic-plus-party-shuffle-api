@@ -49,8 +49,8 @@ jobs:
         uses: anthropics/claude-code-base-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          max_turns: "20"
-          allowed_tools: "Bash(git:*),Bash(npm:*),Read,Edit,MultiEdit,Write,LS,Glob,Grep,TodoWrite"
+          max_turns: "24"
+          allowed_tools: "Bash(git:*),Bash(npm:*),Bash(mkdir:*),Read,Edit,MultiEdit,Write,LS,Glob,Grep"
           prompt: |
             You are working in an existing backend repository.
 
@@ -62,7 +62,7 @@ jobs:
             Important context:
             - the current repository is still based on Express and TypeORM
             - the target architecture is NestJS + CQRS + DDD + Hexagonal Architecture + Prisma
-            - this migration is in progress, not completed yet
+            - this migration is incremental and not completed yet
 
             For this task, do NOT attempt a full migration of the repository.
 
@@ -75,11 +75,16 @@ jobs:
             - do not modify existing Express routes unless strictly necessary
             - do not modify existing TypeORM entities unless explicitly required
             - keep the change small, focused, and committable
-            - prefer writing files over long exploration
-            - after understanding the repo, start implementing immediately
+
+            Execution rules:
+            - do not narrate progress
+            - do not create todo lists
+            - minimize exploration
+            - start writing files as soon as the repo structure is understood
+            - stop as soon as the smallest acceptable implementation is complete
 
             Expected outcome:
-            - a new isolated module exists
+            - a new isolated module exists under src/modules/health
             - the implementation reflects the target architecture direction
             - the existing app is not broadly refactored
             - the repository remains stable
@@ -95,41 +100,49 @@ jobs:
           git status --short
 
       - name: Commit generated changes
+        id: commit_changes
         shell: bash
         run: |
           git config user.name "prd-bot"
           git config user.email "prd-bot@users.noreply.github.com"
 
           if git diff --quiet && git diff --cached --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
             echo "No changes generated"
-            exit 1
+            exit 0
           fi
 
           git add .
           git commit -m "feat: implement PRD ${{ steps.detect.outputs.safe_name }}"
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
 
       - name: Push working branch
+        if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
           git push origin "${{ steps.detect.outputs.branch_name }}"
 
       - name: Setup Node.js
+        if: steps.commit_changes.outputs.has_changes == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Install dependencies
+        if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
           npm ci
 
-      - name: Run build if available
+      - name: Run build
+        if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
           npm run build
 
       - name: Run tests if available
+        if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
           if npm run | grep -qE '^[[:space:]]+test'; then
@@ -139,6 +152,7 @@ jobs:
           fi
 
       - name: Install GitHub CLI
+        if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
           type gh >/dev/null 2>&1 || (
@@ -147,6 +161,7 @@ jobs:
           )
 
       - name: Create pull request
+        if: steps.commit_changes.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
