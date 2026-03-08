@@ -1,0 +1,121 @@
+name: PRD to PR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/prd/incoming/*.md"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  implement-prd:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect PRD file
+        id: detect
+        shell: bash
+        run: |
+          PRD_FILE=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" | grep '^docs/prd/incoming/.*\.md$' | head -n 1)
+
+          if [ -z "$PRD_FILE" ]; then
+            echo "No PRD file found"
+            exit 1
+          fi
+
+          BASENAME=$(basename "$PRD_FILE" .md)
+          SAFE_NAME=$(echo "$BASENAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//' | sed 's/-$//')
+          BRANCH_NAME="prd/${SAFE_NAME}-${{ github.run_number }}"
+
+          echo "prd_file=$PRD_FILE" >> "$GITHUB_OUTPUT"
+          echo "safe_name=$SAFE_NAME" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Create working branch
+        shell: bash
+        run: |
+          git checkout -b "${{ steps.detect.outputs.branch_name }}"
+
+      - name: Run Claude Code Action
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are working in an existing backend repository.
+
+            Read the PRD here:
+            ${{ steps.detect.outputs.prd_file }}
+
+            Follow CLAUDE.md strictly.
+
+            Target backend architecture:
+            - NestJS
+            - CQRS
+            - DDD
+            - Hexagonal Architecture
+            - Prisma instead of TypeORM
+
+            Objectives:
+            - implement the feature described in the PRD
+            - respect the existing repository structure
+            - keep the domain pure
+            - use Prisma only in infrastructure
+            - keep controllers thin
+            - separate commands and queries
+            - add or adapt tests when relevant
+            - leave the repository in a committable state
+
+            Constraints:
+            - do not touch secrets
+            - do not modify CI/CD unless strictly necessary
+            - avoid unrelated changes
+            - if the PRD is ambiguous, implement the smallest coherent MVP
+
+      - name: Commit generated changes
+        shell: bash
+        run: |
+          git config user.name "prd-bot"
+          git config user.email "prd-bot@users.noreply.github.com"
+
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No changes generated"
+            exit 1
+          fi
+
+          git add .
+          git commit -m "feat: implement PRD ${{ steps.detect.outputs.safe_name }}"
+
+      - name: Push working branch
+        shell: bash
+        run: |
+          git push origin "${{ steps.detect.outputs.branch_name }}"
+
+      - name: Install GitHub CLI
+        shell: bash
+        run: |
+          type gh >/dev/null 2>&1 || (
+            sudo apt-get update &&
+            sudo apt-get install -y gh
+          )
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh pr create \
+            --base main \
+            --head "${{ steps.detect.outputs.branch_name }}" \
+            --title "feat: implement ${{ steps.detect.outputs.safe_name }}" \
+            --body "PR generated automatically from PRD \`${{ steps.detect.outputs.prd_file }}\`." \
+            --draft
