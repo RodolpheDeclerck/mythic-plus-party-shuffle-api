@@ -1,64 +1,172 @@
 # Backend architecture rules
 
-The backend is being migrated to NestJS.
+The backend is being migrated from Express + TypeORM to NestJS.
+
+## Migration strategy
+
+This migration is incremental.
+
+That means:
+- do not attempt a full migration unless the PRD explicitly asks for it
+- do not refactor the whole application
+- do not replace the existing Express app globally
+- implement small, isolated, reviewable steps toward the target architecture
+
+When the repository is still missing some NestJS foundations, prefer creating isolated target-oriented modules rather than broad refactors.
 
 ## Target architecture
-Use:
+
+All new backend code must aim toward:
+
 - NestJS
 - CQRS
 - DDD
 - Hexagonal Architecture
 - Prisma instead of TypeORM
 
-## Architectural principles
+## Mandatory folder convention
 
-### DDD
-- Business logic must live in the domain layer
-- Prefer entities, value objects, domain services, and repository interfaces
-- Keep the domain pure and framework-independent
+All new code must use this structure:
 
-### Hexagonal architecture
-- Separate domain, application, infrastructure, and presentation layers
-- Infrastructure must implement ports defined by the domain/application
-- Controllers must stay thin
-- Do not place business logic in controllers or persistence classes
+src/modules/<bounded-context>/
+  domain/
+    entities/
+    value-objects/
+    ports/
+    services/
+  application/
+    commands/
+    queries/
+    handlers/
+    dto/
+  infrastructure/
+    persistence/
+    adapters/
+  presentation/
+    controllers/
+    routes/
 
-### CQRS
-- Separate commands and queries
-- Use dedicated command handlers and query handlers
-- Keep write and read flows explicit
-- Use CQRS pragmatically; do not introduce unnecessary complexity
+Do not invent alternative top-level patterns such as:
+- src/features/
+- src/components/
+- src/services/
 
-### Persistence
-- Use Prisma for persistence
-- Do not use TypeORM for new code
-- Prisma must stay in the infrastructure layer
-- Do not leak Prisma models into the domain layer
-- Map persistence models to domain entities explicitly
+Use `src/modules/` for all new target-oriented business modules.
 
-## Preferred module structure
-For each business module, prefer this structure:
+## Scope control
 
-- domain/
-- application/
-- infrastructure/
-- presentation/
+For each PRD:
+- implement the smallest coherent step
+- prefer adding new isolated modules over modifying legacy code
+- avoid touching unrelated files
+- avoid broad renames or folder reshuffles
+- keep PRs small and reviewable
 
-## Rules
-- prefer small, reviewable changes
-- add tests when relevant
-- do not modify CI/CD unless strictly necessary
-- do not touch secrets
-- avoid changing unrelated files
+If the PRD is ambiguous:
+- choose the smallest safe MVP
+- do not perform large architectural rewrites
 
-## Sensitive areas
+## Legacy code rules
+
+The current repository still contains legacy Express + TypeORM code.
+
+Therefore:
+- do not refactor legacy controllers unless explicitly required
+- do not migrate all routes at once
+- do not modify existing TypeORM entities unless explicitly required
+- do not convert the whole app to NestJS in one PR
+- do not break the current runtime
+
+Legacy code may coexist temporarily with new target-oriented modules.
+
+## DDD rules
+
+Business logic must live in the domain layer.
+
+Prefer:
+- entities
+- value objects
+- domain services
+- repository or port interfaces
+
+The domain layer must remain pure and framework-independent.
+
+Never import these inside domain code:
+- Express
+- NestJS
+- Prisma
+- TypeORM
+
+## Hexagonal architecture rules
+
+Dependencies must point inward.
+
+Preferred flow:
+- presentation → application → domain
+- infrastructure implements ports defined by domain or application
+
+Rules:
+- controllers must stay thin
+- no business logic in controllers
+- no business logic in persistence classes
+- infrastructure must not define business rules
+
+## CQRS rules
+
+Separate:
+- commands for writes
+- queries for reads
+
+Use dedicated handlers.
+
+Apply CQRS pragmatically:
+- use it when it improves clarity
+- do not introduce unnecessary ceremony for trivial cases
+
+## Persistence rules
+
+Use Prisma for all new persistence work.
+
+Rules:
+- Prisma only in infrastructure
+- do not use TypeORM for new code
+- do not leak Prisma models into domain
+- map persistence models explicitly to domain entities
+
+If no new persistence is needed for a PRD, do not add Prisma prematurely.
+
+## API and delivery rules
+
+For new HTTP-facing functionality:
+- keep controllers thin
+- validate inputs in the appropriate layer
+- return explicit response objects
+- avoid coupling transport models directly to domain entities
+
+## Testing rules
+
+When relevant:
+- add focused tests for new behavior
+- prefer small tests close to the new module
+- do not add large unrelated test refactors
+
+## Forbidden modifications
+
+Never modify these areas unless the PRD explicitly requires it:
+
 - .github/
 - infra/
 - terraform/
 - secrets/
+- docker-compose.yml
 
-## Expected quality
-- code should be modular and easy to refactor
-- avoid tight coupling
-- keep naming explicit
-- document important architectural decisions in code comments when useful
+## Quality bar
+
+Code must be:
+- modular
+- explicit in naming
+- easy to refactor
+- low coupling
+- consistent with the target folder structure
+
+If an architectural decision is non-obvious, document it briefly in code comments.
