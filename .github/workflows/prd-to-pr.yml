@@ -149,14 +149,14 @@ jobs:
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
-          npm run dev > server.log 2>&1 &
+          npm start > server.log 2>&1 &
           echo $! > server.pid
 
       - name: Wait for server
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
-          sleep 10
+          sleep 15
 
       - name: Smoke test health endpoint
         if: steps.commit_changes.outputs.has_changes == 'true'
