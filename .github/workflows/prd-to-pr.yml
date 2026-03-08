@@ -83,12 +83,6 @@ jobs:
             - start writing files as soon as the repo structure is understood
             - stop as soon as the smallest acceptable implementation is complete
 
-            Expected outcome:
-            - a new isolated module exists under src/modules/health
-            - the implementation reflects the target architecture direction
-            - the existing app is not broadly refactored
-            - the repository remains stable
-
             Constraints:
             - do not touch secrets
             - do not modify CI/CD unless strictly necessary
@@ -150,6 +144,37 @@ jobs:
           else
             echo "No test script found, skipping tests"
           fi
+
+      - name: Start server
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          npm run dev > server.log 2>&1 &
+          echo $! > server.pid
+
+      - name: Wait for server
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          sleep 10
+
+      - name: Smoke test health endpoint
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          curl --fail http://localhost:8080/api/health
+
+      - name: Show server log on failure
+        if: failure() && steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          cat server.log || true
+
+      - name: Stop server
+        if: always() && steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: |
+          kill "$(cat server.pid)" || true
 
       - name: Install GitHub CLI
         if: steps.commit_changes.outputs.has_changes == 'true'
