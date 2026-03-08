@@ -10,7 +10,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 jobs:
   implement-prd:
@@ -46,10 +45,9 @@ jobs:
         run: |
           git checkout -b "${{ steps.detect.outputs.branch_name }}"
 
-      - name: Run Claude Code Action
-        uses: anthropics/claude-code-action@v1
+      - name: Run Claude Code
+        uses: anthropics/claude-code-base-action@beta
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
             You are working in an existing backend repository.
 
@@ -80,6 +78,9 @@ jobs:
             - do not modify CI/CD unless strictly necessary
             - avoid unrelated changes
             - if the PRD is ambiguous, implement the smallest coherent MVP
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Bash(git:*),Bash(npm:*),View,GlobTool,GrepTool,BatchTool,Edit,Write"
+          max_turns: "10"
 
       - name: Commit generated changes
         shell: bash
@@ -96,17 +97,11 @@ jobs:
           git commit -m "feat: implement PRD ${{ steps.detect.outputs.safe_name }}"
 
       - name: Push working branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           git push origin "${{ steps.detect.outputs.branch_name }}"
-
-      - name: Install GitHub CLI
-        shell: bash
-        run: |
-          type gh >/dev/null 2>&1 || (
-            sudo apt-get update &&
-            sudo apt-get install -y gh
-          )
 
       - name: Create pull request
         env:
