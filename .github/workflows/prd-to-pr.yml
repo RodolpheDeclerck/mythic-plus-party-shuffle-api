@@ -68,16 +68,18 @@ jobs:
 
             Your mission is to implement the smallest coherent step toward the target architecture.
 
-            For this PRD, do exactly this:
-            - create a new isolated folder for the target architecture work
+            Mandatory rules:
+            - all new target-oriented code must go under src/modules/<bounded-context>/
+            - do not create src/features/
             - do not refactor the whole existing app
             - do not modify existing Express routes unless strictly necessary
-            - create a minimal health feature in a new target-oriented structure
-            - if needed, implement it as an isolated module/folder that prepares the Nest-style architecture
+            - do not modify existing TypeORM entities unless explicitly required
             - keep the change small, focused, and committable
+            - prefer writing files over long exploration
+            - after understanding the repo, start implementing immediately
 
             Expected outcome:
-            - a new health feature exists
+            - a new isolated module exists
             - the implementation reflects the target architecture direction
             - the existing app is not broadly refactored
             - the repository remains stable
@@ -86,10 +88,8 @@ jobs:
             - do not touch secrets
             - do not modify CI/CD unless strictly necessary
             - avoid unrelated changes
-            - prefer writing files over long exploration
-            - after understanding the repo, start implementing immediately
 
-      - name: Show git status
+      - name: Show git status after Claude
         shell: bash
         run: |
           git status --short
@@ -112,6 +112,31 @@ jobs:
         shell: bash
         run: |
           git push origin "${{ steps.detect.outputs.branch_name }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          npm ci
+
+      - name: Run build if available
+        shell: bash
+        run: |
+          npm run build
+
+      - name: Run tests if available
+        shell: bash
+        run: |
+          if npm run | grep -qE '^[[:space:]]+test'; then
+            npm test -- --runInBand
+          else
+            echo "No test script found, skipping tests"
+          fi
 
       - name: Install GitHub CLI
         shell: bash
