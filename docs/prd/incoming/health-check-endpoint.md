@@ -18,5 +18,3 @@ Add a health check endpoint in the new NestJS architecture.
 - response contains a status field
 - code is organized according to the target architecture
 - tests are added if relevant
-
-Pipeline test run
