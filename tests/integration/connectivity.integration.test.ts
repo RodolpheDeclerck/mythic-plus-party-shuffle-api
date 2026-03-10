@@ -8,15 +8,15 @@ import { createClient } from 'redis';
 
 const { Client } = pg;
 
-/** Retry a fn up to 3 times with 2s delay between attempts (CI services may need a moment to accept connections). */
-async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+/** Retry a fn up to 5 times with 3s delay between attempts (CI services may need a moment to accept connections). */
+async function withRetry<T>(fn: () => Promise<T>, _label: string): Promise<T> {
   let lastErr: unknown;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     try {
       return await fn();
     } catch (e) {
       lastErr = e;
-      if (i < 2) await new Promise((r) => setTimeout(r, 2000));
+      if (i < 4) await new Promise((r) => setTimeout(r, 3000));
     }
   }
   throw lastErr;
@@ -32,6 +32,10 @@ describe('Connectivity (integration)', () => {
   };
 
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
+  beforeAll(async () => {
+    await new Promise((r) => setTimeout(r, 10000));
+  }, 15000);
 
   it('connects to Postgres', async () => {
     await withRetry(async () => {
