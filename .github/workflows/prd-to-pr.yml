@@ -3,7 +3,7 @@ name: PRD to PR
 on:
   push:
     branches:
-      - main
+      - dev-pipeline
     paths:
       - "docs/prd/incoming/*.md"
 
@@ -14,6 +14,30 @@ permissions:
 jobs:
   implement-prd:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
 
     steps:
       - name: Checkout repository
@@ -135,46 +159,25 @@ jobs:
         run: |
           npm run build
 
-      - name: Run tests if available
+      - name: Run unit tests
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
-        run: |
-          if npm run | grep -qE '^[[:space:]]+test'; then
-            npm test -- --runInBand
-          else
-            echo "No test script found, skipping tests"
-          fi
+        run: npm run test
 
-      - name: Start server
+      - name: Run integration tests
         if: steps.commit_changes.outputs.has_changes == 'true'
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+          REDIS_URL: redis://localhost:6379
         shell: bash
-        run: |
-          npm start > server.log 2>&1 &
-          echo $! > server.pid
+        run: npm run test:integration
 
-      - name: Wait for server
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          sleep 15
-
-      - name: Smoke test health endpoint
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          curl --fail http://localhost:8080/api/health
-
-      - name: Show server log on failure
-        if: failure() && steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          cat server.log || true
-
-      - name: Stop server
-        if: always() && steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          kill "$(cat server.pid)" || true
+      # Smoke test disabled: server requires .env + Postgres to start.
+      # Re-enable when CI has Docker/DB or app supports start-without-DB.
 
       - name: Install GitHub CLI
         if: steps.commit_changes.outputs.has_changes == 'true'
@@ -192,8 +195,7 @@ jobs:
         shell: bash
         run: |
           gh pr create \
-            --base main \
+            --base dev-pipeline \
             --head "${{ steps.detect.outputs.branch_name }}" \
             --title "feat: implement ${{ steps.detect.outputs.safe_name }}" \
-            --body "PR generated automatically from PRD \`${{ steps.detect.outputs.prd_file }}\`." \
-            --draft
+            --body "PR generated automatically from PRD \`${{ steps.detect.outputs.prd_file }}\`."
