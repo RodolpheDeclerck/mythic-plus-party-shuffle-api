@@ -13,10 +13,9 @@ Create the smallest possible health feature aligned with the target architecture
 - otherwise create the target-oriented module structure and wire only the minimal necessary code
 - do not migrate the whole app
 - do not refactor unrelated existing files
+- out of scope: full app migration
 
 ## Acceptance criteria
 - the change is small and focused
 - the repository stays stable
 - the implementation reflects the target architecture direction
-
-
