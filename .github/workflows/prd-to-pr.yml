@@ -167,12 +167,12 @@ jobs:
       - name: Run integration tests
         if: steps.commit_changes.outputs.has_changes == 'true'
         env:
-          POSTGRES_HOST: localhost
+          POSTGRES_HOST: 127.0.0.1
           POSTGRES_PORT: 5432
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test
-          REDIS_URL: redis://localhost:6379
+          REDIS_URL: redis://127.0.0.1:6379
         shell: bash
         run: npm run test:integration
 

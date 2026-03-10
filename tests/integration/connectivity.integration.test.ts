@@ -8,6 +8,20 @@ import { createClient } from 'redis';
 
 const { Client } = pg;
 
+/** Retry a fn up to 3 times with 2s delay between attempts (CI services may need a moment to accept connections). */
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < 3; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < 2) await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  throw lastErr;
+}
+
 describe('Connectivity (integration)', () => {
   const postgresConfig = {
     host: process.env.POSTGRES_HOST || 'localhost',
@@ -20,24 +34,29 @@ describe('Connectivity (integration)', () => {
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
   it('connects to Postgres', async () => {
-    const client = new Client(postgresConfig);
-    try {
-      await client.connect();
-      const res = await client.query('SELECT 1 as ok');
-      expect(res.rows[0].ok).toBe(1);
-    } finally {
-      await client.end();
-    }
+    await withRetry(async () => {
+      const client = new Client(postgresConfig);
+      try {
+        await client.connect();
+        const res = await client.query('SELECT 1 as ok');
+        expect(res.rows[0].ok).toBe(1);
+        return;
+      } finally {
+        await client.end();
+      }
+    }, 'Postgres');
   });
 
   it('connects to Redis', async () => {
-    const client = createClient({ url: redisUrl });
-    try {
-      await client.connect();
-      const pong = await client.ping();
-      expect(pong).toBe('PONG');
-    } finally {
-      await client.quit();
-    }
+    await withRetry(async () => {
+      const client = createClient({ url: redisUrl });
+      try {
+        await client.connect();
+        const pong = await client.ping();
+        expect(pong).toBe('PONG');
+      } finally {
+        await client.quit();
+      }
+    }, 'Redis');
   });
 });
