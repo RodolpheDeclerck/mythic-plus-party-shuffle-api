@@ -138,7 +138,7 @@ jobs:
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
-          git push origin "${{ steps.detect.outputs.branch_name }}"
+          git push --force origin "${{ steps.detect.outputs.branch_name }}"
 
       - name: Setup Node.js
         if: steps.commit_changes.outputs.has_changes == 'true'
