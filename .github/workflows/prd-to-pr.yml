@@ -179,15 +179,6 @@ jobs:
       # Smoke test disabled: server requires .env + Postgres to start.
       # Re-enable when CI has Docker/DB or app supports start-without-DB.
 
-      - name: Install GitHub CLI
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          type gh >/dev/null 2>&1 || (
-            sudo apt-get update &&
-            sudo apt-get install -y gh
-          )
-
       - name: Create pull request
         if: steps.commit_changes.outputs.has_changes == 'true'
         env:
