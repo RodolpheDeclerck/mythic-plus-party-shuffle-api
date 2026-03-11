@@ -18,4 +18,4 @@ Create the smallest possible health feature aligned with the target architecture
 ## Acceptance criteria
 - the change is small and focused
 - the repository stays stable
-- the implementation reflects the target architecture direction
+- the implementation reflects the target architecture direction.

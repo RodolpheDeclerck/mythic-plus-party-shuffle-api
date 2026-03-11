@@ -189,7 +189,7 @@ jobs:
           POSTGRES_DB: test
           REDIS_URL: redis://127.0.0.1:6379
         shell: bash
-        run: npx jest --config jest.integration.config.cjs --runInBand --testTimeout=60000 --verbose 2>&1
+        run: node tests/integration/connectivity.cjs
 
       # Smoke test disabled: server requires .env + Postgres to start.
       # Re-enable when CI has Docker/DB or app supports start-without-DB.
