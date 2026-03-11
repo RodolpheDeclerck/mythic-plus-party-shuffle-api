@@ -153,6 +153,11 @@ jobs:
         run: |
           npm ci
 
+      - name: Run audit
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: npm run audit
+
       - name: Run build
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash

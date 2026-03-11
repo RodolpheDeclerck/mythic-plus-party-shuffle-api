@@ -13,6 +13,7 @@
     "lint:fix": "eslint src/modules tests --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/modules/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/modules/**/*.ts\" \"tests/**/*.ts\"",
+    "audit": "npm audit --audit-level=critical",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "render-start": "npm run build && npm run migrate && npm start",
     "docker:up": "docker-compose up -d",
