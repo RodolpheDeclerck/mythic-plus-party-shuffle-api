@@ -12,7 +12,7 @@ export class HealthController {
   getHealth = (_req: Request, res: Response): void => {
     const query = new GetHealthStatusQuery();
     const healthStatus = this.getHealthStatusHandler.handle(query);
-    
+
     res.status(200).json(healthStatus);
   };
 }

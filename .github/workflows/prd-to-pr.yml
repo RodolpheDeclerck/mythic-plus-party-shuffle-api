@@ -159,6 +159,16 @@ jobs:
         run: |
           npm run build
 
+      - name: Run lint
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: npm run lint
+
+      - name: Run format check
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: npm run format:check
+
       - name: Run unit tests
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
