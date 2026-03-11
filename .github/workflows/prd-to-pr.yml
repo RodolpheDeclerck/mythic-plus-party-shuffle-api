@@ -3,7 +3,7 @@ name: PRD to PR
 on:
   push:
     branches:
-      - main
+      - dev-pipeline
     paths:
       - "docs/prd/incoming/*.md"
 
@@ -14,6 +14,30 @@ permissions:
 jobs:
   implement-prd:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
 
     steps:
       - name: Checkout repository
@@ -114,7 +138,7 @@ jobs:
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
-          git push origin "${{ steps.detect.outputs.branch_name }}"
+          git push --force origin "${{ steps.detect.outputs.branch_name }}"
 
       - name: Setup Node.js
         if: steps.commit_changes.outputs.has_changes == 'true'
@@ -129,61 +153,61 @@ jobs:
         run: |
           npm ci
 
+      - name: Run audit
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: npm run audit
+
       - name: Run build
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
           npm run build
 
-      - name: Run tests if available
+      - name: Run lint
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
-        run: |
-          if npm run | grep -qE '^[[:space:]]+test'; then
-            npm test -- --runInBand
-          else
-            echo "No test script found, skipping tests"
-          fi
+        run: npm run lint
 
-      - name: Start server
+      - name: Run format check
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
-        run: |
-          npm start > server.log 2>&1 &
-          echo $! > server.pid
+        run: npm run format:check
 
-      - name: Wait for server
+      - name: Run unit tests
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
-        run: |
-          sleep 15
+        run: npm run test
 
-      - name: Smoke test health endpoint
+      - name: Wait for Postgres and Redis
         if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
         run: |
-          curl --fail http://localhost:8080/api/health
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client redis-tools >/dev/null
+          for i in $(seq 1 30); do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres 2>/dev/null && redis-cli -h 127.0.0.1 -p 6379 ping 2>/dev/null | grep -q PONG; then
+              echo "Postgres and Redis are ready"
+              exit 0
+            fi
+            echo "Waiting for services... ($i/30)"
+            sleep 2
+          done
+          echo "Services did not become ready"
+          exit 1
 
-      - name: Show server log on failure
-        if: failure() && steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          cat server.log || true
-
-      - name: Stop server
-        if: always() && steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          kill "$(cat server.pid)" || true
-
-      - name: Install GitHub CLI
+      - name: Run integration tests
         if: steps.commit_changes.outputs.has_changes == 'true'
+        env:
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+          REDIS_URL: redis://127.0.0.1:6379
         shell: bash
-        run: |
-          type gh >/dev/null 2>&1 || (
-            sudo apt-get update &&
-            sudo apt-get install -y gh
-          )
+        run: node tests/integration/connectivity.cjs
+
+      # Smoke test disabled: server requires .env + Postgres to start.
+      # Re-enable when CI has Docker/DB or app supports start-without-DB.
 
       - name: Create pull request
         if: steps.commit_changes.outputs.has_changes == 'true'
@@ -192,8 +216,7 @@ jobs:
         shell: bash
         run: |
           gh pr create \
-            --base main \
+            --base dev-pipeline \
             --head "${{ steps.detect.outputs.branch_name }}" \
             --title "feat: implement ${{ steps.detect.outputs.safe_name }}" \
-            --body "PR generated automatically from PRD \`${{ steps.detect.outputs.prd_file }}\`." \
-            --draft
+            --body "PR generated automatically from PRD \`${{ steps.detect.outputs.prd_file }}\`."

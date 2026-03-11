@@ -5,7 +5,7 @@ export class GetHealthStatusHandler {
   handle(_query: GetHealthStatusQuery): HealthStatusDto {
     return {
       status: 'healthy',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }
