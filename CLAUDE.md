@@ -2,6 +2,8 @@
 
 The backend is being migrated from Express + TypeORM to NestJS.
 
+When implementing from a PRD (including in CI): the PRD is the source of truth for *what* to build; this file defines *how* to implement it. Follow both; keep the change minimal.
+
 ## Migration strategy
 
 This migration is incremental.

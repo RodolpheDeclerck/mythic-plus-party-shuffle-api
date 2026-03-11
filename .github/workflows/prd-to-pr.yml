@@ -7,6 +7,10 @@ on:
     paths:
       - "docs/prd/incoming/*.md"
 
+concurrency:
+  group: prd-to-pr-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
@@ -14,6 +18,7 @@ permissions:
 jobs:
   implement-prd:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     services:
       postgres:
@@ -60,9 +65,17 @@ jobs:
           SAFE_NAME=$(echo "$BASENAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//' | sed 's/-$//')
           BRANCH_NAME="prd/${SAFE_NAME}-${{ github.run_number }}"
 
+          MAX_TURNS_RAW=$(head -20 "$PRD_FILE" | grep -E '^max_turns:\s*[0-9]+' | head -1 | sed -E 's/^max_turns:\s*//')
+          if [ -n "$MAX_TURNS_RAW" ]; then
+            if [ "$MAX_TURNS_RAW" -lt 8 ]; then MAX_TURNS=8; elif [ "$MAX_TURNS_RAW" -gt 30 ]; then MAX_TURNS=30; else MAX_TURNS=$MAX_TURNS_RAW; fi
+          else
+            MAX_TURNS=12
+          fi
+
           echo "prd_file=$PRD_FILE" >> "$GITHUB_OUTPUT"
           echo "safe_name=$SAFE_NAME" >> "$GITHUB_OUTPUT"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+          echo "max_turns=$MAX_TURNS" >> "$GITHUB_OUTPUT"
 
       - name: Create working branch
         shell: bash
@@ -73,7 +86,8 @@ jobs:
         uses: anthropics/claude-code-base-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          max_turns: "24"
+          # max_turns: default 12; override in PRD with a line "max_turns: 18" (clamped 8–30)
+          max_turns: ${{ steps.detect.outputs.max_turns }}
           allowed_tools: "Bash(git:*),Bash(npm:*),Bash(mkdir:*),Read,Edit,MultiEdit,Write,LS,Glob,Grep"
           prompt: |
             You are working in an existing backend repository.
@@ -106,6 +120,7 @@ jobs:
             - minimize exploration
             - start writing files as soon as the repo structure is understood
             - stop as soon as the smallest acceptable implementation is complete
+            - prefer few turns: read PRD and CLAUDE.md once, then implement in one go if possible
 
             Constraints:
             - do not touch secrets
@@ -164,17 +179,17 @@ jobs:
         run: |
           npm run build
 
-      - name: Run lint
+      - name: Run lint fix
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
-        run: npm run lint
+        run: npm run lint:fix
 
       - name: Run format
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: npm run format
 
-      - name: Commit format changes
+      - name: Commit lint and format changes
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: |
@@ -185,6 +200,11 @@ jobs:
             git commit --amend --no-edit
             git push --force origin "${{ steps.detect.outputs.branch_name }}"
           fi
+
+      - name: Run lint
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: npm run lint
 
       - name: Run format check
         if: steps.commit_changes.outputs.has_changes == 'true'
