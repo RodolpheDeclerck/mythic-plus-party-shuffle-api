@@ -1,7 +1,7 @@
 # Health check endpoint
 
 ## Context
-The backend is still running on Express, but the migration to NestJS architecture has started.
+The backend is still running on Express; the migration to NestJS architecture has started.
 
 ## Goal
 Create the smallest possible health feature aligned with the target architecture (see CLAUDE.md).
