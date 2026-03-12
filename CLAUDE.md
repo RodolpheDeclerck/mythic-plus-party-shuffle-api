@@ -4,6 +4,10 @@ The backend is being migrated from Express + TypeORM to NestJS.
 
 When implementing from a PRD (including in CI): the PRD is the source of truth for *what* to build; this file defines *how* to implement it. Follow both; keep the change minimal.
 
+## Workflow
+
+Before considering the task complete: run `npm run build`, `npm run test`, and fix any lint/format issues (`npm run lint`, `npm run format`). New code must pass the existing test and integration suite.
+
 ## Migration strategy
 
 This migration is incremental.
@@ -54,6 +58,14 @@ Do not invent alternative top-level patterns such as:
 - src/services/
 
 Use `src/modules/` for all new target-oriented business modules.
+
+Presentation layer: every module must have both a controller in `presentation/controllers/` and routes in `presentation/routes/`. Routes call the controller; the controller delegates to the application layer (handlers). Do not wire handlers directly in routes.
+
+## Code style
+
+- Use ES modules (import/export). Use `.js` extension in relative imports for TypeScript (e.g. `from './foo.js'`).
+- Unit test files: `*.test.ts` next to the unit under test (e.g. `get-version.handler.test.ts` beside `get-version.handler.ts`).
+- Follow existing naming in the codebase: handlers `XxxHandler`, queries `GetXxxQuery`, DTOs `XxxDto`.
 
 ## Scope control
 
@@ -141,16 +153,16 @@ If no new persistence is needed for a PRD, do not add Prisma prematurely.
 
 For new HTTP-facing functionality:
 - keep controllers thin
-- validate inputs in the appropriate layer
-- return explicit response objects
+- validate inputs in the appropriate layer (use class-validator for DTOs when the project uses it)
+- return explicit response objects; use consistent status codes and error response shape
 - avoid coupling transport models directly to domain entities
 
 ## Testing rules
 
-When relevant:
-- add focused tests for new behavior
-- prefer small tests close to the new module
-- do not add large unrelated test refactors
+- New code must be covered by unit tests (handlers, application logic, domain services).
+- Add at least one unit test per handler; cover the main behavior and edge cases.
+- Add integration tests when the feature involves HTTP endpoints, persistence, or external services.
+- Prefer small tests close to the new module; do not add large unrelated test refactors.
 
 ## Forbidden modifications
 
