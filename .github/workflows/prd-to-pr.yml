@@ -152,8 +152,7 @@ jobs:
             dir=$(dirname "$f")
             base=$(basename "$f" .handler.ts)
             if [ ! -f "$dir/$base.handler.test.ts" ] && [ ! -f "$dir/$base.test.ts" ]; then
-              missing="$missing
-  - $f (add $dir/$base.handler.test.ts)"
+              missing="$missing"$'\n'"  - $f (add $dir/$base.handler.test.ts)"
             fi
           done
           if [ -n "$missing" ]; then
