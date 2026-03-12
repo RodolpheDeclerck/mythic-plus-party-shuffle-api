@@ -2,7 +2,7 @@
 
 The backend is being migrated from Express + TypeORM to NestJS.
 
-When implementing from a PRD (including in CI): the PRD is the source of truth for *what* to build; this file defines *how* to implement it. Follow both; keep the change minimal.
+When implementing from a PRD (including in CI): the PRD is the source of truth for *what* to build; this file defines *how* to implement it. **The rules in this file are non-negotiable and take priority over the PRD.** If the PRD says "minimal change" or omits tests/structure, you must still apply this file fully: controller, routes, 100% unit test coverage, integration tests when applicable. Do not skip any of these to satisfy "minimal" scope.
 
 ## Workflow
 
@@ -159,9 +159,20 @@ For new HTTP-facing functionality:
 
 ## Testing rules
 
-- New code must be covered by unit tests (handlers, application logic, domain services).
-- Add at least one unit test per handler; cover the main behavior and edge cases.
-- Add integration tests when the feature involves HTTP endpoints, persistence, or external services.
+- 100% unit test coverage for all new code: every handler, application service, and domain logic you add must have a corresponding `*.test.ts` that covers all code paths and edge cases.
+- Run `npm run test` before considering the task complete; fix any failure or missing coverage.
+
+Integration tests: add them when the feature involves any of the following:
+- **HTTP endpoints**: add an integration test that hits the new route (e.g. GET/POST to the app), asserts status code and response body, and cleans up. Use the existing app bootstrap or a small test server if needed.
+- **Persistence (Prisma/DB)**: add an integration test that uses the real DB (with test env: POSTGRES_* or DATABASE_URL), performs the operation, asserts the result, and cleans up data created during the test.
+- **External services** (Redis, third-party APIs): add an integration test that uses the test instance (e.g. REDIS_URL in CI) or a contract/mock, and asserts the expected behavior.
+
+Conventions for integration tests:
+- File naming: `*.integration.test.ts` (e.g. `tests/integration/version.integration.test.ts` or next to the module).
+- Run with: `npm run test:integration`. Jest config: `jest.integration.config.cjs` (testMatch: `**/*.integration.test.ts`, timeout 60s). Roots include `tests/` and `src/`.
+- Use env vars for config (POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, REDIS_URL); CI provides these via workflow services. Prefer retries or short waits for connectivity (see `tests/integration/connectivity.integration.test.ts`).
+- Keep tests isolated: clean up data created in the test; do not depend on order of execution.
+
 - Prefer small tests close to the new module; do not add large unrelated test refactors.
 
 ## Forbidden modifications
@@ -176,11 +187,10 @@ Never modify these areas unless the PRD explicitly requires it:
 
 ## Quality bar
 
-Code must be:
-- modular
-- explicit in naming
-- easy to refactor
-- low coupling
+Code must follow clean code and Nest/DDD/CQRS best practices:
+- modular, single responsibility; explicit naming; easy to refactor; low coupling
 - consistent with the target folder structure
+- presentation layer: only delegation to application layer; no business logic
+- application layer: orchestration and use cases; domain layer: pure business rules
 
 If an architectural decision is non-obvious, document it briefly in code comments.

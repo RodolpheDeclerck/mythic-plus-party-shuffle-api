@@ -96,7 +96,9 @@ jobs:
             Read the PRD here:
             ${{ steps.detect.outputs.prd_file }}
 
-            Follow CLAUDE.md strictly.
+            Follow CLAUDE.md strictly. The rules in CLAUDE.md (DDD, CQRS, controller, 100% unit test coverage, integration tests when applicable) are non-negotiable and override the PRD: do not skip controller or tests even if the PRD asks for a "minimal" change.
+
+            Architecture: you MUST respect DDD, CQRS, and Hexagonal Architecture. Every module has: presentation (controller + routes) → application (handlers, queries/commands) → domain. Controllers are thin and delegate to handlers; no business logic in controllers or routes. Follow NestJS-style layering and clean code (single responsibility, explicit naming, no logic in presentation).
 
             Important context:
             - the current repository is still based on Express and TypeORM
@@ -114,6 +116,11 @@ jobs:
             - do not modify existing Express routes unless strictly necessary
             - do not modify existing TypeORM entities unless explicitly required
             - keep the change small, focused, and committable
+
+            You MUST deliver for every new module:
+            - a controller in presentation/controllers/ (e.g. <context>.controller.ts); routes in presentation/routes/ that call the controller, never the handler directly
+            - 100% unit test coverage for new code: every handler, and every application/domain file you add must have a corresponding *.test.ts that covers all code paths; run npm run test before stopping and fix any failure or missing coverage
+            - when the feature adds HTTP endpoints, persistence, or external services: add integration tests (*.integration.test.ts in tests/integration/ or next to the module). Run npm run test:integration; use env POSTGRES_*, REDIS_URL as in tests/integration/connectivity.integration.test.ts
 
             Execution rules:
             - do not narrate progress
