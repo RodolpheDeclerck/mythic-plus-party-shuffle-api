@@ -1,5 +1,7 @@
 # PRD 0: Version endpoint (pipeline validation)
 
+max_turns: 20
+
 ## Context
 The backend is still on Express; the migration toward NestJS + DDD + CQRS + Prisma has started. This PRD aims to validate the pipeline (trigger, Claude Code, build, tests, PR) with a single endpoint—no database, no Prisma. **"Minimal" means one feature only; it does NOT mean skipping the full DDD/CQRS structure: you must deliver query, handler, controller, routes, wiring in app, and unit tests.**
 
