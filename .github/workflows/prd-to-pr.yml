@@ -138,6 +138,10 @@ jobs:
             2. `presentation/`: controller (`*.controller.ts`), routes (`*.routes.ts`)
                - routes call the controller; controller delegates to handler; no business logic in either
             3. Wire new routes in `src/app.ts` via `app.use('/api', ...)`
+            > IMPORTANT: controller and routes are ALWAYS required when the module
+            > exposes HTTP endpoints — even with no database, no Prisma, no Redis.
+            > "No database" never means "no controller" or "no routes".
+            > A module without controller + routes will fail the CI structure check.
             4. Unit tests: every handler and application/domain file must have a `*.test.ts` next to it
                - run `npm run test:coverage`, open `coverage/coverage-summary.json`
                - every file you added under `src/modules/` (excluding `*.test.ts`) must have `lines.pct === 100`
