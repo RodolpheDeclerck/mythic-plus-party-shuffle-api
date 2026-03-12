@@ -25,3 +25,4 @@ Add a GET /api/version (or /api/app-version) endpoint following the target struc
 - no regression on the existing application
 
 
+

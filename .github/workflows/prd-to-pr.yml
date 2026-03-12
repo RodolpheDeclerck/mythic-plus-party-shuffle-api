@@ -54,7 +54,8 @@ jobs:
         id: detect
         shell: bash
         run: |
-          PRD_FILE=$(git diff --name-only --diff-filter=AM "${{ github.event.before }}" "${{ github.sha }}" | grep '^docs/prd/incoming/.*\.md$' | head -n 1 || true)
+          set +e
+          PRD_FILE=$(git diff --name-only --diff-filter=AM "${{ github.event.before }}" "${{ github.sha }}" | grep '^docs/prd/incoming/.*\.md$' || true | head -n 1)
 
           if [ -z "$PRD_FILE" ]; then
             echo "No PRD file found"
