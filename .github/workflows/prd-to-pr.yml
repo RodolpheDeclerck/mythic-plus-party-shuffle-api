@@ -45,17 +45,31 @@ jobs:
           - 6379:6379
 
     steps:
+      # ── 1. Setup ────────────────────────────────────────────────────────────
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 2. Detect PRD ───────────────────────────────────────────────────────
 
       - name: Detect PRD file
         id: detect
         shell: bash
         run: |
           set +e
-          PRD_FILE=$(git diff --name-only --diff-filter=AM "${{ github.event.before }}" "${{ github.sha }}" | grep '^docs/prd/incoming/.*\.md$' || true | head -n 1)
+          PRD_FILE=$(git diff --name-only --diff-filter=AM "${{ github.event.before }}" "${{ github.sha }}" \
+            | grep '^docs/prd/incoming/.*\.md$' || true | head -n 1)
 
           if [ -z "$PRD_FILE" ]; then
             echo "No PRD file found"
@@ -63,111 +77,123 @@ jobs:
           fi
 
           BASENAME=$(basename "$PRD_FILE" .md)
-          SAFE_NAME=$(echo "$BASENAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//' | sed 's/-$//')
+          SAFE_NAME=$(echo "$BASENAME" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed 's/[^a-z0-9]/-/g' \
+            | sed 's/-\+/-/g' \
+            | sed 's/^-//' \
+            | sed 's/-$//')
           BRANCH_NAME="prd/${SAFE_NAME}-${{ github.run_number }}"
 
-          MAX_TURNS_RAW=$(head -20 "$PRD_FILE" | grep -E '^max_turns:\s*[0-9]+' | head -1 | sed -E 's/^max_turns:\s*//')
+          MAX_TURNS_RAW=$(head -20 "$PRD_FILE" \
+            | grep -E '^max_turns:\s*[0-9]+' | head -1 \
+            | sed -E 's/^max_turns:\s*//')
           if [ -n "$MAX_TURNS_RAW" ]; then
-            if [ "$MAX_TURNS_RAW" -lt 8 ]; then MAX_TURNS=8; elif [ "$MAX_TURNS_RAW" -gt 30 ]; then MAX_TURNS=30; else MAX_TURNS=$MAX_TURNS_RAW; fi
+            if   [ "$MAX_TURNS_RAW" -lt 8  ]; then MAX_TURNS=8
+            elif [ "$MAX_TURNS_RAW" -gt 30 ]; then MAX_TURNS=30
+            else MAX_TURNS=$MAX_TURNS_RAW
+            fi
           else
             MAX_TURNS=12
           fi
 
-          echo "prd_file=$PRD_FILE" >> "$GITHUB_OUTPUT"
-          echo "safe_name=$SAFE_NAME" >> "$GITHUB_OUTPUT"
+          echo "prd_file=$PRD_FILE"       >> "$GITHUB_OUTPUT"
+          echo "safe_name=$SAFE_NAME"     >> "$GITHUB_OUTPUT"
           echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
-          echo "max_turns=$MAX_TURNS" >> "$GITHUB_OUTPUT"
+          echo "max_turns=$MAX_TURNS"     >> "$GITHUB_OUTPUT"
 
       - name: Create working branch
-        shell: bash
-        run: |
-          git checkout -b "${{ steps.detect.outputs.branch_name }}"
+        run: git checkout -b "${{ steps.detect.outputs.branch_name }}"
+
+      # ── 3. Claude Code generates the implementation ─────────────────────────
 
       - name: Run Claude Code
         uses: anthropics/claude-code-base-action@beta
+        env:
+          NODE_ENV: test
+          CORS_ORIGIN: http://localhost:3000
+          JWT_SECRET: ci-test-secret
+          DOMAIN: localhost
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+          REDIS_URL: redis://127.0.0.1:6379
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # max_turns: default 12; override in PRD with a line "max_turns: 18" (clamped 8–30)
           max_turns: ${{ steps.detect.outputs.max_turns }}
           allowed_tools: "Bash(git:*),Bash(npm:*),Bash(mkdir:*),Read,Edit,MultiEdit,Write,LS,Glob,Grep"
           prompt: |
-            You are working in an existing backend repository. You MUST write the full implementation before any git add/commit. The CI will fail if you push incomplete code.
+            You are working in an existing backend repository.
 
-            Read the PRD here:
-            ${{ steps.detect.outputs.prd_file }}
+            Read the PRD here: ${{ steps.detect.outputs.prd_file }}
+            Read and strictly follow CLAUDE.md — its rules are non-negotiable and override the PRD.
 
-            MANDATORY: Respect DDD + CQRS + Hexagonal (Nest-style). When the PRD adds or modifies a module that has an application layer (queries, handlers, DTOs) and HTTP exposure, you MUST create ALL of the following—no partial commits:
-            1. application: query (or command), handler (*.handler.ts), DTO
-            2. presentation: controller (*.controller.ts), routes (*.routes.ts). Routes call the controller; controller calls the handler.
-            3. Wire the new routes in src/app.ts (add import and app.use) if the feature exposes HTTP endpoints.
-            4. Unit test(s): every handler must have a *.handler.test.ts next to it. Run npm run test and npm run test:coverage; ensure 100% coverage on new files before committing.
-            If you commit without the required layers (handler, controller, routes, or tests when the PRD implies an HTTP-facing module), the CI will fail. Do not run git add until everything above is written and tests pass. For domain-only or infrastructure-only PRDs, follow the PRD and CLAUDE.md without forcing HTTP layers.
+            ## Your mission
+            Implement what the PRD describes, following the DDD + CQRS + Hexagonal structure defined in CLAUDE.md.
 
-            Follow CLAUDE.md strictly. The rules in CLAUDE.md are non-negotiable and override the PRD. Every module that exposes HTTP has: presentation (controller + routes) → application (handlers, queries/commands) → domain. Controllers are thin and delegate to handlers; no business logic in controllers or routes. Follow NestJS-style layering and clean code.
+            ## Mandatory deliverables for any module with an application layer and HTTP exposure
+            1. `application/`: query or command, handler (`*.handler.ts`), DTO
+            2. `presentation/`: controller (`*.controller.ts`), routes (`*.routes.ts`)
+               - routes call the controller; controller delegates to handler; no business logic in either
+            3. Wire new routes in `src/app.ts` via `app.use('/api', ...)`
+            4. Unit tests: every handler and application/domain file must have a `*.test.ts` next to it
+               - run `npm run test:coverage`, open `coverage/coverage-summary.json`
+               - every file you added under `src/modules/` (excluding `*.test.ts`) must have `lines.pct === 100`
+               - fix any gap before moving on
+            5. Integration tests (non-negotiable — see CLAUDE.md):
+               - ANY new HTTP endpoint → `*.integration.test.ts` using supertest on the real Express app
+               - ANY new persistence → integration test using real DB env vars
+               - ANY new external service → integration test using real Redis/etc.
+               - Exception: do NOT generate integration tests for shuffle/composition logic
+               - Run `npm run test:integration` and fix any failure
 
-            Important context:
-            - the current repository is still based on Express and TypeORM
-            - the target architecture is NestJS + CQRS + DDD + Hexagonal Architecture + Prisma
-            - this migration is incremental and not completed yet
+            ## Definition of done (check each before git add)
+            - [ ] `npm run build` passes
+            - [ ] `npm run lint` passes
+            - [ ] `npm run format:check` passes
+            - [ ] `npm run test` passes with 100% coverage on new files
+            - [ ] `npm run test:integration` passes
+            - [ ] handler + controller + routes exist and are wired in app.ts
+            - [ ] every handler has a `*.handler.test.ts` next to it
+            - [ ] every new HTTP route has a `*.integration.test.ts`
 
-            For this task, do NOT attempt a full migration of the repository.
+            Do NOT run `git add` until every item above is checked.
 
-            Your mission is to implement what the PRD describes. When the PRD implies a module with application layer and HTTP exposure, deliver the full DDD/CQRS structure (query/command, handler, controller, routes, app wiring, tests). Do not interpret "minimal" or "small scope" as permission to skip controller, routes, or tests.
+            ## Context
+            - Current stack: Express + TypeORM (legacy, do not refactor)
+            - Target stack: NestJS + CQRS + DDD + Hexagonal + Prisma (incremental migration)
+            - Already migrated: `src/modules/health/`, `src/modules/version/`
+            - New modules go under `src/modules/<bounded-context>/`
 
-            Mandatory rules:
-            - all new target-oriented code must go under src/modules/<bounded-context>/
-            - do not create src/features/
-            - do not refactor the whole existing app
-            - do not modify existing Express routes unless strictly necessary
-            - do not modify existing TypeORM entities unless explicitly required
-            - when adding application layer to a module, deliver the full structure; keep the change focused and committable
+            ## Constraints
+            - Do not touch `.github/`, `infra/`, `terraform/`, `secrets/`, `docker-compose.yml`
+            - Do not modify legacy controllers, routes, or TypeORM entities unless the PRD explicitly requires it
+            - Do not attempt a full migration
+            - Keep the PR small and focused on the PRD scope
+            - Do not narrate progress or create todo lists — implement directly
 
-            You MUST deliver for every new or modified module that has an application layer and HTTP exposure:
-            - a controller in presentation/controllers/ (e.g. <context>.controller.ts); routes in presentation/routes/ that call the controller, never the handler directly
-            - 100% unit test coverage for new code: every handler, and every application/domain file you add must have a corresponding *.test.ts that covers all code paths; run npm run test before stopping and fix any failure or missing coverage
-            - when the feature adds HTTP endpoints, persistence, or external services: add integration tests (*.integration.test.ts in tests/integration/ or next to the module). Run npm run test:integration; use env POSTGRES_*, REDIS_URL as in tests/integration/connectivity.integration.test.ts
+      # ── 4. Validate structure (DDD/CQRS complete) ──────────────────────────
 
-            Do NOT consider the implementation complete until: (1) controller and routes exist and are wired, (2) every new handler has a <name>.test.ts file next to it and npm run test passes. If you stop without tests, the CI will fail.
-
-            Before committing, you MUST: run `npm run test:coverage`, then open coverage/coverage-summary.json and verify that every file you added or modified under src/modules/ (excluding *.test.ts) has 100% line coverage (lines.pct === 100). If any of these files has less than 100%, add or fix unit tests until they do. Only after all new code has 100% line coverage may you run git add and commit. Do not commit without 100% coverage on new code.
-
-            Execution rules:
-            - do not narrate progress
-            - do not create todo lists
-            - minimize exploration
-            - start by writing handler + controller + routes + unit tests together; then run npm run test and fix until green
-            - stop only after the above checklist is satisfied (including tests passing)
-            - prefer few turns: read PRD and CLAUDE.md once, then implement in one go if possible
-
-            Constraints:
-            - do not touch secrets
-            - do not modify CI/CD unless strictly necessary
-            - avoid unrelated changes
-
-      - name: Show git status after Claude
+      - name: Check module structure (handler + controller + routes)
         shell: bash
         run: |
-          git status --short
-
-      - name: Check module structure (DDD/CQRS complete before commit)
-        shell: bash
-        run: |
-          # Only applies to modules that have application layer (query/handler/dto). Skips domain-only or infrastructure-only changes.
           err=""
           for mod in src/modules/*/; do
             [ -d "$mod" ] || continue
             name=$(basename "$mod")
             has_app=$(find "$mod" -path "*/application/*.ts" -not -name "*.test.ts" 2>/dev/null | head -1)
             [ -n "$has_app" ] || continue
-            handlers=$(find "$mod" -path "*/handlers/*.handler.ts" 2>/dev/null | wc -l)
-            controllers=$(find "$mod" -path "*/controllers/*.ts" 2>/dev/null | wc -l)
-            routes=$(find "$mod" -path "*/routes/*.ts" 2>/dev/null | wc -l)
-            if [ "$handlers" -eq 0 ]; then err="${err}${name}: no handler (application/handlers/*.handler.ts). "; fi
-            if [ "$controllers" -eq 0 ]; then err="${err}${name}: no controller (presentation/controllers/*.ts). "; fi
-            if [ "$routes" -eq 0 ]; then err="${err}${name}: no routes (presentation/routes/*.ts). "; fi
+            handlers=$(find    "$mod" -path "*/handlers/*.handler.ts"    2>/dev/null | wc -l)
+            controllers=$(find "$mod" -path "*/controllers/*.ts"         2>/dev/null | wc -l)
+            routes=$(find      "$mod" -path "*/routes/*.ts"              2>/dev/null | wc -l)
+            if [ "$handlers"    -eq 0 ]; then err="${err}${name}: missing handler (application/handlers/*.handler.ts). "; fi
+            if [ "$controllers" -eq 0 ]; then err="${err}${name}: missing controller (presentation/controllers/*.ts). "; fi
+            if [ "$routes"      -eq 0 ]; then err="${err}${name}: missing routes (presentation/routes/*.ts). "; fi
           done
           if [ -n "$err" ]; then
-            echo "::error::Incomplete module (DDD/CQRS). Do not commit until you have handler + controller + routes:$err"
+            echo "::error::Incomplete DDD/CQRS module — do not commit: $err"
             exit 1
           fi
           echo "All modules with application layer have handler + controller + routes."
@@ -180,14 +206,82 @@ jobs:
             dir=$(dirname "$f")
             base=$(basename "$f" .handler.ts)
             if [ ! -f "$dir/$base.handler.test.ts" ] && [ ! -f "$dir/$base.test.ts" ]; then
-              missing="$missing"$'\n'"  - $f (add $dir/$base.handler.test.ts)"
+              missing="$missing"$'\n'"  - $f"
             fi
           done
           if [ -n "$missing" ]; then
-            echo "::error::Every handler must have a unit test. Missing tests for:$missing"
+            echo "::error::Every handler must have a unit test. Missing:$missing"
             exit 1
           fi
           echo "All handlers have unit tests."
+
+      # ── 5. Build + quality checks ───────────────────────────────────────────
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint fix + format (auto-correct)
+        run: |
+          npm run lint:fix
+          npm run format
+
+      - name: Lint check
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Audit
+        run: npm run audit
+
+      # ── 6. Tests (unit then integration) — must pass before commit ──────────
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Unit tests coverage (100% on new modules)
+        run: npm run test:coverage
+
+      - name: Wait for Postgres and Redis
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client redis-tools >/dev/null
+          for i in $(seq 1 30); do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres 2>/dev/null \
+              && redis-cli -h 127.0.0.1 -p 6379 ping 2>/dev/null | grep -q PONG; then
+              echo "Postgres and Redis are ready"
+              exit 0
+            fi
+            echo "Waiting for services... ($i/30)"
+            sleep 2
+          done
+          echo "Services did not become ready in time"
+          exit 1
+
+      - name: Connectivity check
+        env:
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+          REDIS_URL: redis://127.0.0.1:6379
+        run: node tests/integration/connectivity.cjs
+
+      - name: Integration tests
+        env:
+          NODE_ENV: test
+          CORS_ORIGIN: http://localhost:3000
+          JWT_SECRET: ci-test-secret
+          DOMAIN: localhost
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+          REDIS_URL: redis://127.0.0.1:6379
+        run: npm run test:integration
+
+      # ── 7. Commit + push + PR (only if everything above is green) ───────────
 
       - name: Commit generated changes
         id: commit_changes
@@ -195,7 +289,7 @@ jobs:
           PRD_FILE: ${{ steps.detect.outputs.prd_file }}
         shell: bash
         run: |
-          git config user.name "prd-bot"
+          git config user.name  "prd-bot"
           git config user.email "prd-bot@users.noreply.github.com"
 
           if git diff --quiet && git diff --cached --quiet; then
@@ -215,105 +309,7 @@ jobs:
 
       - name: Push working branch
         if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          git push --force origin "${{ steps.detect.outputs.branch_name }}"
-
-      - name: Setup Node.js
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          npm ci
-
-      - name: Run audit
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: npm run audit
-
-      - name: Run build
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          npm run build
-
-      - name: Run lint fix
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: npm run lint:fix
-
-      - name: Run format
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: npm run format
-
-      - name: Commit lint and format changes
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: |
-          if ! git diff --quiet || ! git diff --cached --quiet; then
-            git config user.name "prd-bot"
-            git config user.email "prd-bot@users.noreply.github.com"
-            git add -A
-            git commit --amend --no-edit
-            git push --force origin "${{ steps.detect.outputs.branch_name }}"
-          fi
-
-      - name: Run lint
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: npm run lint
-
-      - name: Run format check
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: npm run format:check
-
-      - name: Run unit tests
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: npm run test
-
-      - name: Run unit tests with 100% coverage (src/modules)
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        shell: bash
-        run: npm run test:coverage
-
-      - name: Wait for Postgres and Redis
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client redis-tools >/dev/null
-          for i in $(seq 1 30); do
-            if pg_isready -h 127.0.0.1 -p 5432 -U postgres 2>/dev/null && redis-cli -h 127.0.0.1 -p 6379 ping 2>/dev/null | grep -q PONG; then
-              echo "Postgres and Redis are ready"
-              exit 0
-            fi
-            echo "Waiting for services... ($i/30)"
-            sleep 2
-          done
-          echo "Services did not become ready"
-          exit 1
-
-      - name: Run integration tests
-        if: steps.commit_changes.outputs.has_changes == 'true'
-        env:
-          POSTGRES_HOST: 127.0.0.1
-          POSTGRES_PORT: 5432
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: test
-          REDIS_URL: redis://127.0.0.1:6379
-        shell: bash
-        run: node tests/integration/connectivity.cjs
-
-      # Smoke test disabled: server requires .env + Postgres to start.
-      # Re-enable when CI has Docker/DB or app supports start-without-DB.
+        run: git push --force origin "${{ steps.detect.outputs.branch_name }}"
 
       - name: Create pull request
         if: steps.commit_changes.outputs.has_changes == 'true'
