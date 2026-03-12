@@ -91,14 +91,19 @@ jobs:
           max_turns: ${{ steps.detect.outputs.max_turns }}
           allowed_tools: "Bash(git:*),Bash(npm:*),Bash(mkdir:*),Read,Edit,MultiEdit,Write,LS,Glob,Grep"
           prompt: |
-            You are working in an existing backend repository.
+            You are working in an existing backend repository. You MUST write the full implementation before any git add/commit. The CI will fail if you push incomplete code.
 
             Read the PRD here:
             ${{ steps.detect.outputs.prd_file }}
 
-            Follow CLAUDE.md strictly. The rules in CLAUDE.md (DDD, CQRS, controller, 100% unit test coverage, integration tests when applicable) are non-negotiable and override the PRD: do not skip controller or tests even if the PRD asks for a "minimal" change.
+            MANDATORY: Respect DDD + CQRS + Hexagonal (Nest-style). When the PRD adds or modifies a module that has an application layer (queries, handlers, DTOs) and HTTP exposure, you MUST create ALL of the following—no partial commits:
+            1. application: query (or command), handler (*.handler.ts), DTO
+            2. presentation: controller (*.controller.ts), routes (*.routes.ts). Routes call the controller; controller calls the handler.
+            3. Wire the new routes in src/app.ts (add import and app.use) if the feature exposes HTTP endpoints.
+            4. Unit test(s): every handler must have a *.handler.test.ts next to it. Run npm run test and npm run test:coverage; ensure 100% coverage on new files before committing.
+            If you commit without the required layers (handler, controller, routes, or tests when the PRD implies an HTTP-facing module), the CI will fail. Do not run git add until everything above is written and tests pass. For domain-only or infrastructure-only PRDs, follow the PRD and CLAUDE.md without forcing HTTP layers.
 
-            Architecture: you MUST respect DDD, CQRS, and Hexagonal Architecture. Every module has: presentation (controller + routes) → application (handlers, queries/commands) → domain. Controllers are thin and delegate to handlers; no business logic in controllers or routes. Follow NestJS-style layering and clean code (single responsibility, explicit naming, no logic in presentation).
+            Follow CLAUDE.md strictly. The rules in CLAUDE.md are non-negotiable and override the PRD. Every module that exposes HTTP has: presentation (controller + routes) → application (handlers, queries/commands) → domain. Controllers are thin and delegate to handlers; no business logic in controllers or routes. Follow NestJS-style layering and clean code.
 
             Important context:
             - the current repository is still based on Express and TypeORM
@@ -107,7 +112,7 @@ jobs:
 
             For this task, do NOT attempt a full migration of the repository.
 
-            Your mission is to implement the smallest coherent step toward the target architecture.
+            Your mission is to implement what the PRD describes. When the PRD implies a module with application layer and HTTP exposure, deliver the full DDD/CQRS structure (query/command, handler, controller, routes, app wiring, tests). Do not interpret "minimal" or "small scope" as permission to skip controller, routes, or tests.
 
             Mandatory rules:
             - all new target-oriented code must go under src/modules/<bounded-context>/
@@ -115,9 +120,9 @@ jobs:
             - do not refactor the whole existing app
             - do not modify existing Express routes unless strictly necessary
             - do not modify existing TypeORM entities unless explicitly required
-            - keep the change small, focused, and committable
+            - when adding application layer to a module, deliver the full structure; keep the change focused and committable
 
-            You MUST deliver for every new module:
+            You MUST deliver for every new or modified module that has an application layer and HTTP exposure:
             - a controller in presentation/controllers/ (e.g. <context>.controller.ts); routes in presentation/routes/ that call the controller, never the handler directly
             - 100% unit test coverage for new code: every handler, and every application/domain file you add must have a corresponding *.test.ts that covers all code paths; run npm run test before stopping and fix any failure or missing coverage
             - when the feature adds HTTP endpoints, persistence, or external services: add integration tests (*.integration.test.ts in tests/integration/ or next to the module). Run npm run test:integration; use env POSTGRES_*, REDIS_URL as in tests/integration/connectivity.integration.test.ts
@@ -143,6 +148,29 @@ jobs:
         shell: bash
         run: |
           git status --short
+
+      - name: Check module structure (DDD/CQRS complete before commit)
+        shell: bash
+        run: |
+          # Only applies to modules that have application layer (query/handler/dto). Skips domain-only or infrastructure-only changes.
+          err=""
+          for mod in src/modules/*/; do
+            [ -d "$mod" ] || continue
+            name=$(basename "$mod")
+            has_app=$(find "$mod" -path "*/application/*.ts" -not -name "*.test.ts" 2>/dev/null | head -1)
+            [ -n "$has_app" ] || continue
+            handlers=$(find "$mod" -path "*/handlers/*.handler.ts" 2>/dev/null | wc -l)
+            controllers=$(find "$mod" -path "*/controllers/*.ts" 2>/dev/null | wc -l)
+            routes=$(find "$mod" -path "*/routes/*.ts" 2>/dev/null | wc -l)
+            if [ "$handlers" -eq 0 ]; then err="${err}${name}: no handler (application/handlers/*.handler.ts). "; fi
+            if [ "$controllers" -eq 0 ]; then err="${err}${name}: no controller (presentation/controllers/*.ts). "; fi
+            if [ "$routes" -eq 0 ]; then err="${err}${name}: no routes (presentation/routes/*.ts). "; fi
+          done
+          if [ -n "$err" ]; then
+            echo "::error::Incomplete module (DDD/CQRS). Do not commit until you have handler + controller + routes:$err"
+            exit 1
+          fi
+          echo "All modules with application layer have handler + controller + routes."
 
       - name: Check handlers have unit tests
         shell: bash
