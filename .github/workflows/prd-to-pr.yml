@@ -172,6 +172,14 @@ jobs:
                - Exception: do NOT generate integration tests for shuffle/composition logic
                - Run `npm run test:integration` and fix any failure
 
+            ## Persistence (only if the PRD requires it)
+            If the PRD involves new data persistence:
+            1. Add the Prisma model in `prisma/schema.prisma`
+            2. Run `npx prisma migrate dev --name <migration-name>` to generate the migration
+            3. Implement the repository in `infrastructure/persistence/` — map Prisma model → domain entity explicitly
+            4. Never use TypeORM for new code
+            5. Never leak Prisma models into domain or application layers
+
             ## Definition of done (check each before git add)
             - [ ] All imports resolve — no TS7016 or missing module errors
             - [ ] `npm run audit` passes after any new installation
@@ -183,6 +191,7 @@ jobs:
             - [ ] handler + controller + routes exist and are wired in app.ts
             - [ ] every handler has a `*.handler.test.ts` next to it
             - [ ] every new HTTP route has a `*.integration.test.ts`
+            - [ ] if persistence: Prisma model added, migration generated, repository maps to domain entity
 
             Do NOT run `git add` until every item above is checked.
 
