@@ -134,6 +134,8 @@ jobs:
 
       - name: Commit generated changes
         id: commit_changes
+        env:
+          PRD_FILE: ${{ steps.detect.outputs.prd_file }}
         shell: bash
         run: |
           git config user.name "prd-bot"
@@ -146,6 +148,11 @@ jobs:
           fi
 
           git add .
+          mkdir -p docs/prd/done
+          if [ -f "$PRD_FILE" ]; then
+            git mv "$PRD_FILE" docs/prd/done/
+          fi
+          git add -A
           git commit -m "feat: implement PRD ${{ steps.detect.outputs.safe_name }}"
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
 
@@ -250,10 +257,12 @@ jobs:
         if: steps.commit_changes.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PRD_FILE: ${{ steps.detect.outputs.prd_file }}
         shell: bash
         run: |
+          PRD_DONE="docs/prd/done/$(basename "$PRD_FILE")"
           gh pr create \
             --base dev-pipeline \
             --head "${{ steps.detect.outputs.branch_name }}" \
             --title "feat: implement ${{ steps.detect.outputs.safe_name }}" \
-            --body "PR generated automatically from PRD \`${{ steps.detect.outputs.prd_file }}\`."
+            --body-file "$PRD_DONE"
