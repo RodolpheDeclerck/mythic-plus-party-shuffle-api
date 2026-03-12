@@ -28,3 +28,5 @@ Add a GET /api/version (or /api/app-version) endpoint following the target struc
 
 Re-run: validate pipeline and CLAUDE.md updates (controller, tests, workflow). Rules non-negotiable over PRD. Claude must push only with 100% coverage on new code. Trigger. Exclude integration from unit run. CI checks full DDD/CQRS before commit.
 
+
+
