@@ -130,6 +130,20 @@ jobs:
             Read the PRD here: ${{ steps.detect.outputs.prd_file }}
             Read and strictly follow CLAUDE.md — its rules are non-negotiable and override the PRD.
 
+            ## Dependency check (do this FIRST, before writing any code)
+            1. Read `package.json` with `cat package.json`
+            2. For every package you plan to import in new code or tests,
+               verify it exists in `dependencies` or `devDependencies`
+            3. If a package or its `@types/*` is missing, install it before coding:
+               - Always use `--save-dev` for test utilities and `@types/*`
+               - Only install packages directly needed by the PRD scope
+               - Well-known allowed packages: `supertest`, `@types/supertest`,
+                 `@types/pg`, `@types/express`, `@types/jest`, `@types/node`,
+                 and any `@types/*` for packages already in `dependencies`
+               - Never install unknown or unrelated packages
+               - Run `npm run audit` after any new installation and fix critical issues
+            4. Never assume a package is installed — always verify first
+
             ## Your mission
             Implement what the PRD describes, following the DDD + CQRS + Hexagonal structure defined in CLAUDE.md.
 
@@ -154,6 +168,8 @@ jobs:
                - Run `npm run test:integration` and fix any failure
 
             ## Definition of done (check each before git add)
+            - [ ] All imports resolve — no TS7016 or missing module errors
+            - [ ] `npm run audit` passes after any new installation
             - [ ] `npm run build` passes
             - [ ] `npm run lint` passes
             - [ ] `npm run format:check` passes
