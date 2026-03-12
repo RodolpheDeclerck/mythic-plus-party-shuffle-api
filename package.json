@@ -8,6 +8,7 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "jest --config jest.config.cjs --runInBand",
+    "test:coverage": "jest --config jest.config.cjs --runInBand --coverage",
     "test:integration": "jest --config jest.integration.config.cjs --runInBand --testTimeout=60000",
     "lint": "eslint src/modules tests --ext .ts,.tsx",
     "lint:fix": "eslint src/modules tests --ext .ts,.tsx --fix",

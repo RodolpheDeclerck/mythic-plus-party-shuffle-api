@@ -122,12 +122,16 @@ jobs:
             - 100% unit test coverage for new code: every handler, and every application/domain file you add must have a corresponding *.test.ts that covers all code paths; run npm run test before stopping and fix any failure or missing coverage
             - when the feature adds HTTP endpoints, persistence, or external services: add integration tests (*.integration.test.ts in tests/integration/ or next to the module). Run npm run test:integration; use env POSTGRES_*, REDIS_URL as in tests/integration/connectivity.integration.test.ts
 
+            Do NOT consider the implementation complete until: (1) controller and routes exist and are wired, (2) every new handler has a <name>.test.ts file next to it and npm run test passes. If you stop without tests, the CI will fail.
+
+            Before committing, you MUST: run `npm run test:coverage`, then open coverage/coverage-summary.json and verify that every file you added or modified under src/modules/ (excluding *.test.ts) has 100% line coverage (lines.pct === 100). If any of these files has less than 100%, add or fix unit tests until they do. Only after all new code has 100% line coverage may you run git add and commit. Do not commit without 100% coverage on new code.
+
             Execution rules:
             - do not narrate progress
             - do not create todo lists
             - minimize exploration
-            - start writing files as soon as the repo structure is understood
-            - stop as soon as the smallest acceptable implementation is complete
+            - start by writing handler + controller + routes + unit tests together; then run npm run test and fix until green
+            - stop only after the above checklist is satisfied (including tests passing)
             - prefer few turns: read PRD and CLAUDE.md once, then implement in one go if possible
 
             Constraints:
@@ -139,6 +143,24 @@ jobs:
         shell: bash
         run: |
           git status --short
+
+      - name: Check handlers have unit tests
+        shell: bash
+        run: |
+          missing=""
+          for f in $(find src/modules -name "*.handler.ts" -not -name "*.test.ts" 2>/dev/null); do
+            dir=$(dirname "$f")
+            base=$(basename "$f" .handler.ts)
+            if [ ! -f "$dir/$base.handler.test.ts" ] && [ ! -f "$dir/$base.test.ts" ]; then
+              missing="$missing
+  - $f (add $dir/$base.handler.test.ts)"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Every handler must have a unit test. Missing tests for:$missing"
+            exit 1
+          fi
+          echo "All handlers have unit tests."
 
       - name: Commit generated changes
         id: commit_changes
@@ -230,6 +252,11 @@ jobs:
         if: steps.commit_changes.outputs.has_changes == 'true'
         shell: bash
         run: npm run test
+
+      - name: Run unit tests with 100% coverage (src/modules)
+        if: steps.commit_changes.outputs.has_changes == 'true'
+        shell: bash
+        run: npm run test:coverage
 
       - name: Wait for Postgres and Redis
         if: steps.commit_changes.outputs.has_changes == 'true'
