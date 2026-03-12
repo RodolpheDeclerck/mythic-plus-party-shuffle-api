@@ -150,6 +150,11 @@ jobs:
             ## Mandatory deliverables for any module with an application layer and HTTP exposure
             1. `application/`: query or command, handler (`*.handler.ts`), DTO
             2. `presentation/`: controller (`*.controller.ts`), routes (`*.routes.ts`)
+               - these are TWO separate files — a controller WITHOUT a routes file is incomplete
+               - `routes/*.routes.ts`: imports the controller, wires Express Router, exports the router
+                 Example: const router = Router(); router.get('/version', ctrl.getVersion); export default router;
+               - `controllers/*.controller.ts`: imports the handler, calls it, returns the response
+                 Example: getVersion(req, res) { const result = await handler.execute(); res.json(result); }
                - routes call the controller; controller delegates to handler; no business logic in either
             3. Wire new routes in `src/app.ts` via `app.use('/api', ...)`
             > IMPORTANT: controller and routes are ALWAYS required when the module
