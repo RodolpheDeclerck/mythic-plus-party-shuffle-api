@@ -24,3 +24,4 @@ Add a GET /api/version (or /api/app-version) endpoint following the target struc
 - the module follows the folder structure under src/modules/version/ (application + presentation)
 - no regression on the existing application
 
+
