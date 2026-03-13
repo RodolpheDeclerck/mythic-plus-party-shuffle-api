@@ -159,3 +159,5 @@ structure, using Prisma instead of TypeORM for all persistence.
   map them to strings in the domain entity to keep domain pure
 - The `@BeforeInsert` logic (code generation, expiresAt) lives in the legacy entity —
   do NOT replicate it in the domain entity for this PRD (read-only endpoints only)
+
+  
