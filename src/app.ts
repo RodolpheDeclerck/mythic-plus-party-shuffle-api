@@ -8,6 +8,7 @@ import partyRoutes from './routes/party.routes.js';
 import authenticationRoutes from './routes/authentication.routes.js';
 import userRoutes from './routes/user.routes.js';
 import eventRoutes from './routes/event.routes.js';
+import newEventRoutes from './modules/event/presentation/routes/event.routes.js';
 import healthRoutes from './modules/health/presentation/routes/health.routes.js';
 import versionRoutes from './modules/version/presentation/routes/version.routes.js';
 import cookieParser from 'cookie-parser';
