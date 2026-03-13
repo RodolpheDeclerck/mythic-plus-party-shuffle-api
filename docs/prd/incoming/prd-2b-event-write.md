@@ -12,12 +12,12 @@
   | presentation/routes/ | 0 (extend existing event.routes.ts) |
   | **Total new files** | **8** |
 
-  max_turns = 4 + 8 + 5 = 17
-  +5 for editing existing files (repository, controller, routes)
-  max_turns: 22
+  max_turns = round_up_to_10(4 + 8 + 8) = 20
+  +5 for editing existing files
+  max_turns: 20
 -->
 
-max_turns: 22
+max_turns: 20
 
 ---
 
@@ -178,3 +178,4 @@ router.patch('/events/:eventCode/setPartiesVisibility', (req, res) => eventContr
 - Check `prisma/schema.prisma` for the exact model name of `event_admins` before using it
 - `req.identity` is typed via `src/types/express/index.d.ts` — no need to redeclare
 - Do NOT generate any tests — written manually after merge
+

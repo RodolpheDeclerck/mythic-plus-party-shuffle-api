@@ -18,7 +18,8 @@ max_turns: [calculated below]
   | presentation/routes/ | 1 |
   | **Total files** | **?** |
 
-  max_turns = 4 + [total files] + 5 = [result]
+  max_turns = round_up_to_10(4 + [total files] + 8) = [result]
+  Examples: 8 files → 20, 14 files → 30, 20 files → 40
 -->
 
 ---
