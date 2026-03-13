@@ -143,28 +143,41 @@ jobs:
             Read the PRD here: ${{ steps.detect.outputs.prd_file }}
             Read and strictly follow CLAUDE.md — its rules are non-negotiable and override the PRD.
 
-            ## Dependency check (do this FIRST, before writing any code)
-            1. Read `package.json` with `cat package.json`
-            2. For every package you plan to import in new code or tests,
-               verify it exists in `dependencies` or `devDependencies`
-            3. If a package or its `@types/*` is missing, install it before coding:
-               - Always use `--save-dev` for test utilities and `@types/*`
-               - Only install packages directly needed by the PRD scope
-               - Well-known allowed packages: `supertest`, `@types/supertest`,
-                 `@types/pg`, `@types/express`, `@types/jest`, `@types/node`,
-                 and any `@types/*` for packages already in `dependencies`
-               - Never install unknown or unrelated packages
-               - Run `npm run audit` after any new installation and fix critical issues
-            4. Never assume a package is installed — always verify first
+            ## Exploration rules — STRICT
+            - Read ONLY the PRD and CLAUDE.md before coding — nothing else
+            - Do NOT read package.json, app.ts, prisma.ts, or any other file
+            - All context you need is provided below — use it directly
+            - Start writing code immediately after reading PRD + CLAUDE.md
 
-            ## Exploration rules
-            - Read ONLY these files before coding:
-              1. CLAUDE.md
-              2. The PRD
-              3. `src/config/prisma.ts` (if PRD involves persistence)
-              4. Existing module files (only if PRD says "extend existing module")
-            - Do NOT read legacy files unless the PRD explicitly references them
-            - Start writing code after these reads — do not explore further
+            ## Pre-loaded context (use directly, do NOT re-read these files)
+
+            ### src/config/prisma.ts
+            ```typescript
+            import { PrismaClient } from '@prisma/client';
+            const prisma = new PrismaClient();
+            export default prisma;
+            ```
+
+            ### src/app.ts — imports section
+            ```typescript
+            import cors from 'cors';
+            import express from 'express';
+            import { createServer } from 'http';
+            import { Server } from 'socket.io';
+            import characterRoutes from './routes/character.routes.js';
+            import metadataRoutes from './routes/metadata.routes.js';
+            import partyRoutes from './routes/party.routes.js';
+            import authenticationRoutes from './routes/authentication.routes.js';
+            import userRoutes from './routes/user.routes.js';
+            import eventRoutes from './routes/event.routes.js';         // legacy — do NOT remove
+            import healthRoutes from './modules/health/presentation/routes/health.routes.js';
+            import versionRoutes from './modules/version/presentation/routes/version.routes.js';
+            ```
+            Add your new module import BEFORE the legacy eventRoutes import line.
+            Then register it with app.use('/api', newEventRoutes) BEFORE app.use('/api', eventRoutes).
+
+            ### Available packages (already in package.json — do NOT install these)
+            express, @prisma/client, typescript, @types/express, @types/node, cors, socket.io, cookie-parser
 
             ## Mandatory deliverables for any module with an application layer and HTTP exposure
             1. `application/`: query or command, handler (`*.handler.ts`), DTO

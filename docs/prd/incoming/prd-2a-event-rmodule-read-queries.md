@@ -1,6 +1,23 @@
 # PRD 2a: Event module — read queries (NestJS + Prisma)
 
-max_turns: 20
+<!--
+  ## Estimation
+  | Layer | Files |
+  |-------|-------|
+  | domain/entities/ | 2 (Event, Character) |
+  | domain/ports/ | 1 (EventRepositoryPort) |
+  | application/queries/ | 3 (GetAllEvents, GetEventByCode, GetEventCharacters) |
+  | application/dto/ | 2 (EventDto, CharacterDto) |
+  | application/handlers/ | 3 (GetAllEvents, GetEventByCode, GetEventCharacters) |
+  | infrastructure/persistence/ | 1 (PrismaEventRepository) |
+  | presentation/controllers/ | 1 (EventController) |
+  | presentation/routes/ | 1 (event.routes.ts) |
+  | **Total files** | **14** |
+
+  max_turns = 4 + 14 + 3 = 21
+-->
+
+max_turns: 21
 
 ---
 
@@ -128,4 +145,3 @@ using Prisma for all persistence. No tests — they are written manually after t
 - Place new routes BEFORE legacy event routes in `src/app.ts` — do NOT remove legacy import
 - Legacy event routes are at `src/routes/event.routes.ts` — do not touch
 - Do NOT generate any tests — unit and integration tests are written manually after merge
-

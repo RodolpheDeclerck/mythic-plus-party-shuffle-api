@@ -1,6 +1,25 @@
 # PRD [N]: [Feature name]
 
-max_turns: 20
+max_turns: [calculated below]
+
+<!--
+  Formula: max_turns = 4 (overhead: read PRD + CLAUDE.md + build + lint) + nb_files + 3 (safety margin)
+
+  ## Estimation
+  | Layer | Files |
+  |-------|-------|
+  | domain/entities/ | ? |
+  | domain/ports/ | ? |
+  | application/queries/ or commands/ | ? |
+  | application/dto/ | ? |
+  | application/handlers/ | ? |
+  | infrastructure/persistence/ | ? |
+  | presentation/controllers/ | 1 |
+  | presentation/routes/ | 1 |
+  | **Total files** | **?** |
+
+  max_turns = 4 + [total files] + 3 = [result]
+-->
 
 ---
 
@@ -101,10 +120,7 @@ Already migrated modules for reference: `src/modules/health/`, `src/modules/vers
 
 - [ ] Build is green (`npm run build`)
 - [ ] Lint and format pass (`npm run lint`, `npm run format:check`)
-- [ ] 100% unit test coverage on all new files under `src/modules/[bounded-context]/`
-- [ ] Integration test exists for every new HTTP endpoint (supertest on real Express app)
-- [ ] Integration test exists for every new Prisma operation (real DB via env vars)
-- [ ] `npm run test` and `npm run test:integration` both pass
+- [ ] Tests written manually by developer after merge
 - [ ] No regression on existing routes
 - [ ] Module follows the folder structure: `domain/ application/ infrastructure/ presentation/`
 - [ ] No business logic in controller or routes
