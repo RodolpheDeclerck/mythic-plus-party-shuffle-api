@@ -1,24 +1,5 @@
 # PRD 2b: Event module — write commands (NestJS + Prisma)
 
-<!--
-  ## Estimation
-  | Layer | Files |
-  |-------|-------|
-  | application/commands/ | 3 (CreateEvent, DeleteEvent, SetPartiesVisibility) |
-  | application/handlers/ | 3 (CreateEvent, DeleteEvent, SetPartiesVisibility) |
-  | application/dto/ | 2 (CreateEventDto, SetPartiesVisibilityDto) |
-  | infrastructure/persistence/ | 0 (extend existing PrismaEventRepository) |
-  | presentation/controllers/ | 0 (extend existing EventController) |
-  | presentation/routes/ | 0 (extend existing event.routes.ts) |
-  | **Total new files** | **8** |
-
-  max_turns = round_up_to_10(4 + 8 + 8) = 20
-  +5 for editing existing files
-  max_turns: 20
--->
-
-max_turns: 20
-
 ---
 
 ## Context
@@ -178,4 +159,3 @@ router.patch('/events/:eventCode/setPartiesVisibility', (req, res) => eventContr
 - Check `prisma/schema.prisma` for the exact model name of `event_admins` before using it
 - `req.identity` is typed via `src/types/express/index.d.ts` — no need to redeclare
 - Do NOT generate any tests — written manually after merge
-

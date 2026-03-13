@@ -98,17 +98,7 @@ jobs:
             | sed 's/-$//')
           BRANCH_NAME="prd/${SAFE_NAME}-${{ github.run_number }}"
 
-          MAX_TURNS_RAW=$(head -20 "$PRD_FILE" \
-            | grep -E '^max_turns:\s*[0-9]+' | head -1 \
-            | sed -E 's/^max_turns:\s*//')
-          if [ -n "$MAX_TURNS_RAW" ]; then
-            if   [ "$MAX_TURNS_RAW" -lt 8  ]; then MAX_TURNS=8
-            elif [ "$MAX_TURNS_RAW" -gt 50 ]; then MAX_TURNS=50
-            else MAX_TURNS=$MAX_TURNS_RAW
-            fi
-          else
-            MAX_TURNS=12
-          fi
+          MAX_TURNS=50
 
           echo "prd_file=$PRD_FILE"       >> "$GITHUB_OUTPUT"
           echo "safe_name=$SAFE_NAME"     >> "$GITHUB_OUTPUT"
