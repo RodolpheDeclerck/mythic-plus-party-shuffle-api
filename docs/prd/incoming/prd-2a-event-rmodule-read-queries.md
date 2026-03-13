@@ -128,3 +128,4 @@ using Prisma for all persistence. No tests — they are written manually after t
 - Place new routes BEFORE legacy event routes in `src/app.ts` — do NOT remove legacy import
 - Legacy event routes are at `src/routes/event.routes.ts` — do not touch
 - Do NOT generate any tests — unit and integration tests are written manually after merge
+
