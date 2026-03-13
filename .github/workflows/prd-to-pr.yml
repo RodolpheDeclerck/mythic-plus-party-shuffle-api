@@ -68,8 +68,21 @@ jobs:
         shell: bash
         run: |
           set +e
-          PRD_FILE=$(git diff --name-only --diff-filter=AM "${{ github.event.before }}" "${{ github.sha }}" \
-            | grep '^docs/prd/incoming/.*\.md$' || true | head -n 1)
+
+          BEFORE="${{ github.event.before }}"
+
+          # Handle first push or force push where before is all zeros
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || [ -z "$BEFORE" ]; then
+            PRD_FILE=$(find docs/prd/incoming -name "*.md" ! -name ".gitkeep" 2>/dev/null | head -n 1)
+          else
+            PRD_FILE=$(git diff --name-only --diff-filter=AM "$BEFORE" "${{ github.sha }}" \
+              | grep '^docs/prd/incoming/.*\.md$' || true | head -n 1)
+          fi
+
+          # Fallback: if diff found nothing, check incoming folder directly
+          if [ -z "$PRD_FILE" ]; then
+            PRD_FILE=$(find docs/prd/incoming -name "*.md" ! -name ".gitkeep" 2>/dev/null | head -n 1)
+          fi
 
           if [ -z "$PRD_FILE" ]; then
             echo "No PRD file found"
@@ -90,7 +103,7 @@ jobs:
             | sed -E 's/^max_turns:\s*//')
           if [ -n "$MAX_TURNS_RAW" ]; then
             if   [ "$MAX_TURNS_RAW" -lt 8  ]; then MAX_TURNS=8
-            elif [ "$MAX_TURNS_RAW" -gt 30 ]; then MAX_TURNS=30
+            elif [ "$MAX_TURNS_RAW" -gt 50 ]; then MAX_TURNS=50
             else MAX_TURNS=$MAX_TURNS_RAW
             fi
           else
@@ -144,8 +157,14 @@ jobs:
                - Run `npm run audit` after any new installation and fix critical issues
             4. Never assume a package is installed — always verify first
 
-            ## Your mission
-            Implement what the PRD describes, following the DDD + CQRS + Hexagonal structure defined in CLAUDE.md.
+            ## Exploration rules
+            - Read ONLY these files before coding:
+              1. CLAUDE.md
+              2. The PRD
+              3. `src/config/prisma.ts` (if PRD involves persistence)
+              4. Existing module files (only if PRD says "extend existing module")
+            - Do NOT read legacy files unless the PRD explicitly references them
+            - Start writing code after these reads — do not explore further
 
             ## Mandatory deliverables for any module with an application layer and HTTP exposure
             1. `application/`: query or command, handler (`*.handler.ts`), DTO
@@ -157,18 +176,16 @@ jobs:
                  Example: getVersion(req, res) { const result = await handler.execute(); res.json(result); }
                - routes call the controller; controller delegates to handler; no business logic in either
             3. Wire new routes in `src/app.ts` via `app.use('/api', ...)`
-            > IMPORTANT: controller and routes are ALWAYS required when the module
-            > exposes HTTP endpoints — even with no database, no Prisma, no Redis.
-            > "No database" never means "no controller" or "no routes".
-            > A module without controller + routes will fail the CI structure check.
-            4. Unit tests: every handler and application/domain file must have a `*.test.ts` next to it
-               - run `npm run test:coverage`, open `coverage/coverage-summary.json`
-               - every file you added under `src/modules/` (excluding `*.test.ts`) must have `lines.pct === 100`
-               - fix any gap before moving on
+               > IMPORTANT: controller and routes are ALWAYS required when the module
+               > exposes HTTP endpoints — even with no database, no Prisma, no Redis.
+               > "No database" never means "no controller" or "no routes".
+               > A module without controller + routes will fail the CI structure check.
+            4. Unit tests — NOT your responsibility:
+               - Do NOT generate unit tests
+               - They are written manually by the developer after the PR
             5. Integration tests — NOT your responsibility:
                - Do NOT generate integration tests
                - They are written manually by the developer after the PR
-               - The CI will run them if they exist but their absence will not block you
 
             ## Persistence (only if the PRD requires it)
             If the PRD involves new data persistence:
@@ -184,10 +201,8 @@ jobs:
             - [ ] `npm run build` passes
             - [ ] `npm run lint` passes
             - [ ] `npm run format:check` passes
-            - [ ] `npm run test` passes with 100% coverage on new files
             - [ ] handler + controller + routes exist and are wired in app.ts
-            - [ ] every handler has a `*.handler.test.ts` next to it
-            - [ ] if persistence: Prisma model added, migration generated, repository maps to domain entity
+            - [ ] if persistence: Prisma model added, repository maps to domain entity
 
             Do NOT run `git add` until every item above is checked.
 
@@ -228,23 +243,6 @@ jobs:
           fi
           echo "All modules with application layer have handler + controller + routes."
 
-      - name: Check handlers have unit tests
-        shell: bash
-        run: |
-          missing=""
-          for f in $(find src/modules -name "*.handler.ts" -not -name "*.test.ts" 2>/dev/null); do
-            dir=$(dirname "$f")
-            base=$(basename "$f" .handler.ts)
-            if [ ! -f "$dir/$base.handler.test.ts" ] && [ ! -f "$dir/$base.test.ts" ]; then
-              missing="$missing"$'\n'"  - $f"
-            fi
-          done
-          if [ -n "$missing" ]; then
-            echo "::error::Every handler must have a unit test. Missing:$missing"
-            exit 1
-          fi
-          echo "All handlers have unit tests."
-
       # ── 5. Build + quality checks ───────────────────────────────────────────
 
       - name: Build
@@ -264,15 +262,7 @@ jobs:
       - name: Audit
         run: npm run audit
 
-      # ── 6. Tests (unit then integration) — must pass before commit ──────────
-
-      - name: Unit tests
-        run: npm run test
-
-      - name: Unit tests coverage (100% on new modules)
-        run: npm run test:coverage
-
-      - name: Wait for Postgres and Redis
+      # ── 6. Tests (integration only if they exist) ──────────────────────────      - name: Wait for Postgres and Redis
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client redis-tools >/dev/null
           for i in $(seq 1 30); do
