@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique @db.VarChar(255)
+  email        String    @unique @db.VarChar(255)
+  password     String
+  salt         String
+  sessionToken String?
+
+  eventsCreated AppEvent[] @relation("EventCreatedBy")
+  eventsAdmin   AppEvent[] @relation("EventAdmins")
+
+  @@map("users")
+}
+
+model AppEvent {
+  id               Int       @id @default(autoincrement())
+  code             String    @unique
+  name             String
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime?
+  updatedAt        DateTime  @updatedAt
+  arePartiesVisible Boolean  @default(false)
+
+  createdById Int
+  createdBy   User @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  characters Character[]
+  admins     User[]      @relation("EventAdmins")
+
+  @@map("events")
+}
+
+model Character {
+  id               Int     @id @default(autoincrement())
+  name             String
+  characterClass   String
+  specialization   String
+  iLevel           Int
+  role             String
+  bloodLust        Boolean @default(false)
+  battleRez        Boolean @default(false)
+  keystoneMinLevel Int     @default(2)
+  keystoneMaxLevel Int     @default(99)
+
+  eventCode String?
+  event     AppEvent? @relation(fields: [eventCode], references: [code], onDelete: Cascade)
+
+  @@map("character")
+}
+
+model EventAdmin {
+  eventId Int @map("event_id")
+  userId  Int @map("user_id")
+
+  @@id([eventId, userId])
+  @@map("event_admins")
+}
