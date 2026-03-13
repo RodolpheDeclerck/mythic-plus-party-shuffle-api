@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id(map: "PK_a3ffb1c0c8416b9fc6f907b7433") @default(autoincrement())
+  username      String         @unique(map: "UQ_fe0bb3f6520ee0469504521e710") @db.VarChar(255)
+  email         String         @unique(map: "UQ_97672ac88f789774dd47f7c8be3") @db.VarChar(255)
+  password      String         @db.VarChar
+  salt          String         @db.VarChar
+  sessionToken  String?        @db.VarChar
+  event_admins  event_admins[]
+  eventsCreated AppEvent[]     @relation("EventCreatedBy")
+
+  @@map("users")
+}
+
+model AppEvent {
+  id                Int            @id(map: "PK_40731c7151fe4be3116e45ddf73") @default(autoincrement())
+  code              String         @unique(map: "UQ_0dcf33a3c6edf9ba546f30d801e") @db.VarChar
+  name              String         @db.VarChar
+  createdAt         DateTime       @default(now()) @db.Timestamp(6)
+  expiresAt         DateTime?      @db.Timestamp(6)
+  updatedAt         DateTime       @default(now()) @updatedAt @db.Timestamp(6)
+  arePartiesVisible Boolean        @default(false)
+  createdById       Int?
+  characters        Character[]
+  event_admins      event_admins[]
+  createdBy         User?          @relation("EventCreatedBy", fields: [createdById], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK_2fb864f37ad210f4295a09b684d")
+
+  @@map("events")
+}
+
+model Character {
+  id               Int                           @id(map: "PK_6c4aec48c564968be15078b8ae5") @default(autoincrement())
+  name             String                        @db.VarChar
+  characterClass   character_characterclass_enum
+  specialization   character_specialization_enum
+  iLevel           Int
+  role             character_role_enum
+  bloodLust        Boolean                       @default(false)
+  battleRez        Boolean                       @default(false)
+  keystoneMinLevel Int                           @default(2)
+  keystoneMaxLevel Int                           @default(99)
+  eventCode        String?                       @db.VarChar
+  event            AppEvent?                     @relation(fields: [eventCode], references: [code], onDelete: Cascade, onUpdate: NoAction, map: "FK_a2a1e604587dd7415b4964a9e07")
+
+  @@map("character")
+}
+
+model event_admins {
+  event_id Int
+  user_id  Int
+  events   AppEvent @relation(fields: [event_id], references: [id], onDelete: Cascade, map: "FK_46b9b4b7865c81cb4d723a35b7e")
+  users    User     @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "FK_6918af9fd3be1ddc04b41d998b8")
+
+  @@id([event_id, user_id], map: "PK_a7f2c3c48d438a9430813246aa6")
+  @@index([event_id], map: "IDX_46b9b4b7865c81cb4d723a35b7")
+  @@index([user_id], map: "IDX_6918af9fd3be1ddc04b41d998b")
+}
+
+model migrations {
+  id        Int    @id(map: "PK_8c82d7f526340ab734260ea46be") @default(autoincrement())
+  timestamp BigInt
+  name      String @db.VarChar
+}
+
+model parties {
+  id                  Int                   @id @default(autoincrement())
+  created_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  status              String?               @db.VarChar(50)
+  shuffle_round       Int?
+  party_members       party_members[]
+  party_modifications party_modifications[]
+}
+
+model party_members {
+  id                                                                        Int                   @id @default(autoincrement())
+  party_id                                                                  Int?
+  character_name                                                            String?               @db.VarChar(255)
+  character_class                                                           String?               @db.VarChar(50)
+  specialization                                                            String?               @db.VarChar(50)
+  role                                                                      String?               @db.VarChar(50)
+  item_level                                                                Decimal?              @db.Decimal(5, 2)
+  keystone_min                                                              Int?
+  keystone_max                                                              Int?
+  raider_io_score                                                           Int?
+  is_melee                                                                  Boolean?
+  has_battle_rez                                                            Boolean?
+  has_bloodlust                                                             Boolean?
+  parties                                                                   parties?              @relation(fields: [party_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  party_modifications_party_modifications_new_member_idToparty_members      party_modifications[] @relation("party_modifications_new_member_idToparty_members")
+  party_modifications_party_modifications_previous_member_idToparty_members party_modifications[] @relation("party_modifications_previous_member_idToparty_members")
+}
+
+model party_modifications {
+  id                                                                  Int            @id @default(autoincrement())
+  party_id                                                            Int?
+  modified_at                                                         DateTime?      @default(now()) @db.Timestamptz(6)
+  reason                                                              String?        @db.VarChar(255)
+  previous_member_id                                                  Int?
+  new_member_id                                                       Int?
+  party_members_party_modifications_new_member_idToparty_members      party_members? @relation("party_modifications_new_member_idToparty_members", fields: [new_member_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parties                                                             parties?       @relation(fields: [party_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  party_members_party_modifications_previous_member_idToparty_members party_members? @relation("party_modifications_previous_member_idToparty_members", fields: [previous_member_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+enum character_characterclass_enum {
+  Warrior
+  Deathknight
+  Paladin
+  Monk
+  Priest
+  Mage
+  Druid
+  Rogue
+  Hunter
+  Demon_Hunter @map("Demon Hunter")
+  Warlock
+  Evoker
+  Shaman
+}
+
+enum character_role_enum {
+  TANK
+  HEAL
+  CAC
+  DIST
+}
+
+enum character_specialization_enum {
+  Warrior_Arms
+  Warrior_Fury
+  Warrior_Protection
+  Paladin_Holy
+  Paladin_Protection
+  Paladin_Retribution
+  Hunter_BeastMastery
+  Hunter_Marksmanship
+  Hunter_Survival
+  Rogue_Assassination
+  Rogue_Outlaw
+  Rogue_Subtlety
+  Priest_Discipline
+  Priest_Holy
+  Priest_Shadow
+  DeathKnight_Blood
+  DeathKnight_Frost
+  DeathKnight_Unholy
+  Shaman_Elemental
+  Shaman_Enhancement
+  Shaman_Restoration
+  Mage_Arcane
+  Mage_Fire
+  Mage_Frost
+  Warlock_Affliction
+  Warlock_Demonology
+  Warlock_Destruction
+  Monk_Brewmaster
+  Monk_Mistweaver
+  Monk_Windwalker
+  Druid_Balance
+  Druid_Feral
+  Druid_Guardian
+  Druid_Restoration
+  DemonHunter_Havoc
+  DemonHunter_Vengeance
+  Evoker_Devastation
+  Evoker_Preservation
+  Evoker_Augmentation
+}
