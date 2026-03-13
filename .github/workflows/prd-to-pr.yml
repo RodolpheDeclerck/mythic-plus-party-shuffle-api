@@ -165,12 +165,10 @@ jobs:
                - run `npm run test:coverage`, open `coverage/coverage-summary.json`
                - every file you added under `src/modules/` (excluding `*.test.ts`) must have `lines.pct === 100`
                - fix any gap before moving on
-            5. Integration tests (non-negotiable — see CLAUDE.md):
-               - ANY new HTTP endpoint → `*.integration.test.ts` using supertest on the real Express app
-               - ANY new persistence → integration test using real DB env vars
-               - ANY new external service → integration test using real Redis/etc.
-               - Exception: do NOT generate integration tests for shuffle/composition logic
-               - Run `npm run test:integration` and fix any failure
+            5. Integration tests — NOT your responsibility:
+               - Do NOT generate integration tests
+               - They are written manually by the developer after the PR
+               - The CI will run them if they exist but their absence will not block you
 
             ## Persistence (only if the PRD requires it)
             If the PRD involves new data persistence:
@@ -187,10 +185,8 @@ jobs:
             - [ ] `npm run lint` passes
             - [ ] `npm run format:check` passes
             - [ ] `npm run test` passes with 100% coverage on new files
-            - [ ] `npm run test:integration` passes
             - [ ] handler + controller + routes exist and are wired in app.ts
             - [ ] every handler has a `*.handler.test.ts` next to it
-            - [ ] every new HTTP route has a `*.integration.test.ts`
             - [ ] if persistence: Prisma model added, migration generated, repository maps to domain entity
 
             Do NOT run `git add` until every item above is checked.
