@@ -143,6 +143,10 @@ jobs:
             Read the PRD here: ${{ steps.detect.outputs.prd_file }}
             Read and strictly follow CLAUDE.md — its rules are non-negotiable and override the PRD.
 
+            ## FORBIDDEN
+            - Do NOT use TodoWrite or any todo list tool — it wastes turns and is not needed
+            - Every TodoWrite call costs one turn — use that turn to write a file instead
+
             ## Exploration rules — STRICT
             - Read ONLY the PRD and CLAUDE.md before coding — nothing else
             - Do NOT read package.json, app.ts, prisma.ts, or any other file
