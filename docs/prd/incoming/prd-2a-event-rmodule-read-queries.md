@@ -14,10 +14,10 @@
   | presentation/routes/ | 1 (event.routes.ts) |
   | **Total files** | **14** |
 
-  max_turns = 4 + 14 + 3 = 21
+  max_turns = 4 + 14 + 5 = 23
 -->
 
-max_turns: 21
+max_turns: 23
 
 ---
 
@@ -136,6 +136,8 @@ using Prisma for all persistence. No tests — they are written manually after t
 ---
 
 ## Notes for Claude Code
+
+- All filenames must be kebab-case: `get-all-events.handler.ts`, NOT `GetAllEventsHandler.ts`
 
 - Prisma client is at `src/config/prisma.ts`
 - Prisma model for events is `AppEvent` — use `prisma.appEvent.*`

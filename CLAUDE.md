@@ -2,6 +2,23 @@
 
 The backend is being migrated from Express + TypeORM to NestJS.
 
+## Naming conventions — MANDATORY
+
+All files must use **kebab-case**. PascalCase filenames are forbidden.
+
+| ✅ Correct | ❌ Forbidden |
+|-----------|-------------|
+| `get-all-events.handler.ts` | `GetAllEventsHandler.ts` |
+| `get-all-events.query.ts` | `GetAllEventsQuery.ts` |
+| `event.controller.ts` | `EventController.ts` |
+| `event.routes.ts` | `EventRoutes.ts` |
+| `prisma-event.repository.ts` | `PrismaEventRepository.ts` |
+| `event.dto.ts` | `EventDto.ts` |
+| `event.entity.ts` | `EventEntity.ts` |
+
+Class names inside files remain PascalCase — only the **filename** must be kebab-case.
+
+
 When implementing from a PRD (including in CI): the PRD is the source of truth for *what* to build; this file defines *how* to implement it. **The rules in this file are non-negotiable and take priority over the PRD.** If the PRD says "minimal change" or omits tests/structure, you must still apply this file fully: controller, routes, 100% unit test coverage, integration tests when applicable. Do not skip any of these to satisfy "minimal" scope.
 
 ---
