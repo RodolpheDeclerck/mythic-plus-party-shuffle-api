@@ -9,6 +9,7 @@ import authenticationRoutes from './routes/authentication.routes.js';
 import userRoutes from './routes/user.routes.js';
 import eventRoutes from './routes/event.routes.js';
 import healthRoutes from './modules/health/presentation/routes/health.routes.js';
+import versionRoutes from './modules/version/presentation/routes/version.routes.js';
 import cookieParser from 'cookie-parser';
 
 const app = express();
