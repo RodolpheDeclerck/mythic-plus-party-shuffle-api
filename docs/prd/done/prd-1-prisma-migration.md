@@ -192,3 +192,4 @@ This shared client will be used by all future infrastructure repositories.
 - TypeORM enums (CharacterClass, Role, Specialization) are stored as strings in the DB —
   use `String` in Prisma, not Prisma enums, to avoid conflicts with existing data
 - Do not add `@@relation` names that conflict with existing foreign key constraint names in the DB
+
